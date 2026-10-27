@@ -40,10 +40,6 @@ irm https://raw.githubusercontent.com/kk-stack-dev/kotonoha-app/main/install.ps1
 
 インストールが終わると Kotonoha が起動し、セットアップ画面が開きます。新しい版が出たときも、同じ 1 行で更新できます。
 
-Kotonoha には Apple や Microsoft の有料の署名を付けていません。ブラウザでダウンロードすると「開発元を確認できません」
-などの警告で止められるため、ターミナルから入れる方法にしています。上の 1 行は、ダウンロードしたファイルの SHA-256 を
-リリースのものと照らし合わせてからインストールします。中身は [install.sh](install.sh) と [install.ps1](install.ps1)
-で確認できます。
 
 ## 使い方
 
