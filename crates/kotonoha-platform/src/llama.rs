@@ -65,7 +65,7 @@ impl LanguageModel for LlamaCli {
             return Err(EngineError::Failed(format!(
                 "llama exited with {:?}: {}",
                 output.code,
-                process::tail(&output.stderr, 300)
+                process::error_summary(&output.stderr, 300)
             )));
         }
         Ok(output.stdout)

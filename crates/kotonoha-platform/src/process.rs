@@ -70,6 +70,21 @@ pub fn tail(text: &str, max_chars: usize) -> String {
     text.chars().skip(count.saturating_sub(max_chars)).collect::<String>().trim().to_owned()
 }
 
+/// The lines of a tool's stderr that report an error, for error messages. whisper.cpp and llama.cpp
+/// print their timings after the error, so the plain tail hides the cause. Falls back to the tail.
+pub fn error_summary(stderr: &str, max_chars: usize) -> String {
+    let errors = stderr
+        .lines()
+        .map(str::trim)
+        .filter(|l| {
+            let l = l.to_ascii_lowercase();
+            l.contains("error") || l.contains("failed")
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    tail(if errors.is_empty() { stderr } else { &errors }, max_chars)
+}
+
 #[cfg(all(test, unix))]
 mod tests {
     use super::*;
@@ -100,5 +115,16 @@ mod tests {
     fn tail_keeps_the_end() {
         assert_eq!(tail("abcdef", 3), "def");
         assert_eq!(tail("ab", 3), "ab");
+    }
+
+    #[test]
+    fn error_summary_keeps_the_error_lines() {
+        let stderr = "read_audio_data: failed to read audio data\r\nerror: failed to read audio file 'a.wav'\r\n\
+                      whisper_print_timings:    total time =   341.34 ms\r\nerror: 1 input file(s) failed\r\n";
+        assert_eq!(
+            error_summary(stderr, 300),
+            "read_audio_data: failed to read audio data\nerror: failed to read audio file 'a.wav'\nerror: 1 input file(s) failed"
+        );
+        assert_eq!(error_summary("just timings\n", 300), "just timings");
     }
 }

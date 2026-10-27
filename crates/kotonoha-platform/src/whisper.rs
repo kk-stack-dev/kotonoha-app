@@ -37,13 +37,15 @@ impl SpeechRecognizer for WhisperCli {
         if !request.model.is_file() {
             return Err(EngineError::ModelMissing(request.model.to_owned()));
         }
-        // The temporary file is deleted when `wav` drops, after the tool has exited
+        // The temporary file is deleted when `wav` drops, after the tool has exited. It must already be
+        // closed here: on Windows whisper.cpp opens audio with fopen_s, which refuses a file that another
+        // process still has open for writing ("failed to read audio file", exit code 11)
         let wav = write_wav(request.samples).map_err(|e| EngineError::Failed(format!("could not write audio: {e}")))?;
         let mut args: Vec<std::ffi::OsString> = vec![
             "-m".into(),
             request.model.into(),
             "-f".into(),
-            wav.path().into(),
+            wav.as_os_str().into(),
             "-l".into(),
             request.language.into(),
             "-t".into(),
@@ -58,7 +60,7 @@ impl SpeechRecognizer for WhisperCli {
             return Err(EngineError::Failed(format!(
                 "whisper exited with {:?}: {}",
                 output.code,
-                process::tail(&output.stderr, 300)
+                process::error_summary(&output.stderr, 300)
             )));
         }
         Ok(output.stdout)
@@ -72,8 +74,8 @@ pub(crate) fn to_engine_error(e: ToolError) -> EngineError {
     }
 }
 
-/// 16-bit PCM WAV, the format whisper.cpp reads natively.
-fn write_wav(samples: &[f32]) -> std::io::Result<tempfile::NamedTempFile> {
+/// 16-bit PCM WAV, the format whisper.cpp reads natively. Returned closed, deleted on drop.
+fn write_wav(samples: &[f32]) -> std::io::Result<tempfile::TempPath> {
     let file = tempfile::Builder::new().prefix("kotonoha-").suffix(".wav").tempfile()?;
     let spec = hound::WavSpec {
         channels: 1,
@@ -87,7 +89,7 @@ fn write_wav(samples: &[f32]) -> std::io::Result<tempfile::NamedTempFile> {
         writer.write_sample((s.clamp(-1.0, 1.0) * f32::from(i16::MAX)) as i16).map_err(std::io::Error::other)?;
     }
     writer.finalize().map_err(std::io::Error::other)?;
-    Ok(file)
+    Ok(file.into_temp_path())
 }
 
 /// Whether `path` looks like a whisper.cpp model, for settings validation.
@@ -101,8 +103,8 @@ mod tests {
 
     #[test]
     fn writes_readable_16k_wav() {
-        let file = write_wav(&[0.0, 0.5, -0.5, 1.5]).unwrap();
-        let mut reader = hound::WavReader::open(file.path()).unwrap();
+        let path = write_wav(&[0.0, 0.5, -0.5, 1.5]).unwrap();
+        let mut reader = hound::WavReader::open(&path).unwrap();
         assert_eq!(reader.spec().sample_rate, 16_000);
         let samples: Vec<i16> = reader.samples::<i16>().map(Result::unwrap).collect();
         assert_eq!(samples, vec![0, 16_383, -16_383, i16::MAX]);
