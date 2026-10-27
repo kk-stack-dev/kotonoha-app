@@ -29,7 +29,7 @@
 curl -fsSL https://raw.githubusercontent.com/kk-stack-dev/kotonoha-app/main/install.sh | sh
 ```
 
-### Windows
+### Windows ※不具合発生中v1.0.0
 
 1. スタートメニューで「PowerShell」と入力して開きます
 2. 次の 1 行を貼り付けて、Enter キーを押します
