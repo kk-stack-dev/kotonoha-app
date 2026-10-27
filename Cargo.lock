@@ -2373,7 +2373,7 @@ dependencies = [
 
 [[package]]
 name = "kotonoha-app"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "anyhow",
  "kotonoha-core",
@@ -2394,7 +2394,7 @@ dependencies = [
 
 [[package]]
 name = "kotonoha-cli"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "anyhow",
  "async-trait",
@@ -2411,7 +2411,7 @@ dependencies = [
 
 [[package]]
 name = "kotonoha-core"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "async-trait",
  "regex",
@@ -2426,7 +2426,7 @@ dependencies = [
 
 [[package]]
 name = "kotonoha-platform"
-version = "1.0.0"
+version = "1.0.1"
 dependencies = [
  "arboard",
  "async-trait",
