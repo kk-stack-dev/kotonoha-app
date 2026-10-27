@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Event access for the settings, setup and overlay pages. App commands are allowed by default.",
+  "windows": ["settings", "setup", "overlay"],
+  "permissions": ["core:default"]
+}

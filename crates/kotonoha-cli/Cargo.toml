@@ -1,0 +1,27 @@
+[package]
+name = "kotonoha-cli"
+description = "Command-line tools for Kotonoha: diagnostics, model downloads, transcribing files and test recordings."
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+
+[[bin]]
+name = "kotonoha"
+path = "src/main.rs"
+
+[dependencies]
+kotonoha-core.workspace = true
+kotonoha-platform.workspace = true
+anyhow.workspace = true
+async-trait.workspace = true
+clap = { version = "4", features = ["derive"] }
+hound = "3"
+tempfile = "3"
+unicode-normalization = "0.1"
+tokio = { workspace = true, features = ["rt-multi-thread", "macros", "time", "sync"] }
+tracing.workspace = true
+tracing-subscriber.workspace = true
+
+[lints]
+workspace = true

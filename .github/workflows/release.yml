@@ -1,0 +1,99 @@
+name: Release
+
+# Builds the app for macOS (one universal .app for Apple silicon and Intel) and Windows, and publishes
+# it as the latest release of this repository, where install.sh and install.ps1 fetch it.
+#
+# Run it by hand from the Actions tab. With "publish" off it only builds and keeps the files as
+# workflow artifacts.
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: "Publish a release (v<version from tauri.conf.json>)"
+        type: boolean
+        default: false
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: macos
+            os: macos-latest
+          - name: windows
+            os: windows-latest
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.name == 'macos' && 'aarch64-apple-darwin,x86_64-apple-darwin' || '' }}
+      - uses: Swatinem/rust-cache@v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: app/package-lock.json
+      - name: Install frontend dependencies
+        working-directory: app
+        run: npm ci
+
+      # Ad-hoc signature ("-"): free, enough for the app to start, and it carries the microphone
+      # entitlement the hardened runtime requires. It is not a Developer ID signature, so a copy
+      # downloaded with a browser is still stopped by Gatekeeper; install.sh downloads with curl.
+      - name: Build (macOS)
+        if: matrix.name == 'macos'
+        working-directory: app
+        env:
+          APPLE_SIGNING_IDENTITY: "-"
+        run: |
+          npm run tauri build -- --target universal-apple-darwin --bundles app
+          app=../target/universal-apple-darwin/release/bundle/macos/Kotonoha.app
+          codesign --verify --deep --strict "$app"
+          codesign --display --entitlements - "$app" | grep -q audio-input
+          mkdir -p ../out
+          ditto -c -k --keepParent "$app" ../out/Kotonoha-mac.zip
+
+      - name: Build (Windows)
+        if: matrix.name == 'windows'
+        working-directory: app
+        run: |
+          npm run tauri build -- --bundles nsis
+          mkdir -p ../out
+          cp ../target/release/bundle/nsis/Kotonoha_*_x64-setup.exe ../out/Kotonoha-windows-x64-setup.exe
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: app-${{ matrix.name }}
+          path: out/*
+          if-no-files-found: error
+
+  publish:
+    if: inputs.publish
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          version=$(jq -r .version app/src-tauri/tauri.conf.json)
+          cd out
+          sha256sum Kotonoha-* > SHA256SUMS
+          cat SHA256SUMS
+          gh release create "v$version" * --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest \
+            --title "Kotonoha $version" \
+            --notes "インストール方法は README を見てください。"

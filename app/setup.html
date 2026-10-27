@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kotonoha セットアップ</title>
+  </head>
+  <body>
+    <main class="wizard">
+      <header class="wizard-head">
+        <div class="steps" id="steps" aria-hidden="true"></div>
+        <p class="muted small" id="step-count"></p>
+      </header>
+
+      <!-- Step: download what is missing -->
+      <section class="step" id="step-download" aria-labelledby="download-heading" hidden>
+        <div class="intro">
+          <h1 id="download-heading">文字起こしに使うファイルをダウンロードします</h1>
+          <p class="muted">一度だけ必要です。終わったあとは、インターネットにつながっていなくても使えます。</p>
+        </div>
+        <div class="content">
+          <div class="card" id="download-card">
+            <ul class="items" id="download-items"></ul>
+            <div class="download" id="download-box" hidden>
+              <div class="progress" role="progressbar" aria-label="ダウンロードの進み具合" aria-valuemin="0" aria-valuemax="100">
+                <span id="download-bar"></span>
+              </div>
+              <div class="row">
+                <span class="label" id="download-label"></span>
+                <button type="button" id="download-cancel">中止</button>
+              </div>
+            </div>
+            <p class="muted small" id="download-note"></p>
+          </div>
+          <ul class="manual" id="manual"></ul>
+          <p class="error" id="download-error" role="alert"></p>
+        </div>
+        <footer class="wizard-foot">
+          <button type="button" class="quiet" data-action="later">あとで設定する</button>
+          <button type="button" class="primary" id="download-start">ダウンロードして始める</button>
+          <button type="button" class="primary" data-action="next" id="download-next" hidden>次へ</button>
+        </footer>
+      </section>
+
+      <!-- Step: macOS permissions -->
+      <section class="step" id="step-permissions" aria-labelledby="permissions-heading" hidden>
+        <div class="intro">
+          <h1 id="permissions-heading">macOS の許可</h1>
+          <p class="muted">許可は macOS の画面で行います。Kotonoha が代わりに許可することはありません。</p>
+        </div>
+        <div class="content">
+          <div class="card status" id="mic-status"></div>
+          <div class="card status" id="input-status"></div>
+        </div>
+        <footer class="wizard-foot">
+          <button type="button" class="quiet" data-action="back">戻る</button>
+          <button type="button" class="primary" data-action="next">次へ</button>
+        </footer>
+      </section>
+
+      <!-- Step: try it -->
+      <section class="step" id="step-try" aria-labelledby="try-heading" hidden>
+        <div class="intro">
+          <h1 id="try-heading">ショートカットで話してみてください</h1>
+          <p class="muted" id="try-how"></p>
+        </div>
+        <div class="content">
+          <div class="field-group">
+            <h2 class="label" id="shortcut-heading">ショートカット</h2>
+            <div class="choices" id="shortcut-choices" role="group" aria-labelledby="shortcut-heading"></div>
+            <p class="error" id="shortcut-error" role="alert"></p>
+          </div>
+          <div class="card try">
+            <div class="status-line" id="try-status" role="status" aria-live="polite"></div>
+            <label class="muted small" for="try-text" id="try-hint"></label>
+            <textarea id="try-text" rows="4"></textarea>
+            <p class="muted small">表記がおかしい言葉は、設定の「辞書」に登録すると直ります。</p>
+          </div>
+        </div>
+        <footer class="wizard-foot">
+          <button type="button" class="quiet" data-action="back">戻る</button>
+          <button type="button" class="primary" id="finish">使い始める</button>
+        </footer>
+      </section>
+    </main>
+    <script type="module" src="/src/setup/main.ts"></script>
+  </body>
+</html>

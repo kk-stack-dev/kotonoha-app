@@ -1,0 +1,185 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kotonoha 設定</title>
+  </head>
+  <body>
+    <header class="top">
+      <div class="title-row">
+        <h1>Kotonoha</h1>
+        <p class="muted small">変更はすぐに反映されます</p>
+      </div>
+      <div class="tabs" role="tablist" aria-label="設定の項目">
+        <button type="button" role="tab" id="tab-general" aria-controls="panel-general" aria-selected="true">一般</button>
+        <button type="button" role="tab" id="tab-dictionary" aria-controls="panel-dictionary" aria-selected="false" tabindex="-1">辞書</button>
+        <button type="button" role="tab" id="tab-advanced" aria-controls="panel-advanced" aria-selected="false" tabindex="-1">詳細</button>
+      </div>
+    </header>
+
+    <main class="page">
+      <div id="banners"></div>
+
+      <!-- General -->
+      <div class="panel" role="tabpanel" id="panel-general" aria-labelledby="tab-general">
+        <section class="card" aria-labelledby="shortcut-heading">
+          <div class="card-head">
+            <h2 id="shortcut-heading">ショートカット</h2>
+            <span class="saved" data-saved="shortcut"></span>
+          </div>
+          <div class="choices" id="shortcut-choices" role="group" aria-labelledby="shortcut-heading"></div>
+          <p class="muted small">押して話し、もう一度押すと入力します。押したまま話して離しても同じです。</p>
+          <p class="error" id="shortcut-error" role="alert"></p>
+        </section>
+
+        <section class="card list" aria-labelledby="input-heading">
+          <div class="card-head">
+            <h2 id="input-heading">入力と文章</h2>
+            <span class="saved" data-saved="behavior"></span>
+          </div>
+          <label class="setting">
+            <span class="text">
+              <span>入力欄に自動で貼り付ける</span>
+              <span class="small">オフにすると、クリップボードにコピーするだけになります</span>
+            </span>
+            <input type="checkbox" role="switch" id="auto-insert" />
+          </label>
+          <label class="setting nested" id="keep-clipboard-row">
+            <span class="text"><span>貼り付けた後もクリップボードに残す</span></span>
+            <input type="checkbox" role="switch" id="keep-clipboard" />
+          </label>
+          <label class="setting">
+            <span class="text"><span>「えーと」「うーん」などを取り除く</span></span>
+            <input type="checkbox" role="switch" id="remove-fillers" />
+          </label>
+          <label class="setting">
+            <span class="text">
+              <span>文の終わりで改行する</span>
+              <span class="small">「。」ごとに改行します。長い文章では、言語モデルが話題のまとまりごとに改行します</span>
+            </span>
+            <input type="checkbox" role="switch" id="line-breaks" />
+          </label>
+          <div class="setting" id="llm-row">
+            <label class="text" for="llm-rewrite">
+              <span>句読点や言い直しを整える</span>
+              <span class="small" id="llm-note">このコンピューターの中で動く言語モデルで整えます</span>
+            </label>
+            <input type="checkbox" role="switch" id="llm-rewrite" />
+          </div>
+          <p class="error" id="behavior-error" role="alert"></p>
+        </section>
+
+        <section class="card list" aria-label="起動">
+          <label class="setting">
+            <span class="text"><span>ログイン時に起動する</span></span>
+            <input type="checkbox" role="switch" id="autostart" />
+          </label>
+        </section>
+      </div>
+
+      <!-- Dictionary -->
+      <div class="panel" role="tabpanel" id="panel-dictionary" aria-labelledby="tab-dictionary" hidden>
+        <p class="muted">人名や製品名など、正しく書いてほしい言葉を登録します。</p>
+
+        <form class="card add-word" id="dictionary-form">
+          <label for="new-word">正しい書き方</label>
+          <label for="new-variants">間違えやすい書き方（任意）</label>
+          <span></span>
+          <input id="new-word" placeholder="例: ひだまり工房" required autocomplete="off" />
+          <input id="new-variants" placeholder="例: ひだまりこうぼう、日だまり工房" autocomplete="off" />
+          <button type="submit" class="primary">追加</button>
+          <span></span>
+          <span class="muted small hint">読点（、）かカンマで区切って複数入れられます</span>
+        </form>
+        <p class="error" id="dictionary-error" role="alert"></p>
+
+        <section class="card words" aria-labelledby="mine-heading">
+          <h2 id="mine-heading"></h2>
+          <ul id="user-words"></ul>
+          <p class="muted small empty" id="user-empty">まだ登録していません。</p>
+        </section>
+
+        <section class="card words" aria-labelledby="builtin-heading">
+          <button type="button" class="disclosure" id="builtin-toggle" aria-expanded="false" aria-controls="builtin-words">
+            <span class="chevron" aria-hidden="true"></span>
+            <span class="text">
+              <span id="builtin-heading" class="heading"></span>
+              <span class="muted small">よく使われる製品名です。不要なものはオフにできます</span>
+            </span>
+          </button>
+          <ul id="builtin-words" hidden></ul>
+        </section>
+      </div>
+
+      <!-- Advanced -->
+      <div class="panel" role="tabpanel" id="panel-advanced" aria-labelledby="tab-advanced" hidden>
+        <section class="card" aria-labelledby="models-heading">
+          <div class="card-head">
+            <h2 id="models-heading">モデル</h2>
+            <span class="saved" data-saved="models"></span>
+          </div>
+          <p class="muted small">
+            通常は「自動」のままで使えます。軽量モデルは精度が少し下がりますが、メモリの少ないコンピューターでも速く動きます。
+          </p>
+          <div class="model-fields">
+            <label>文字起こし<select id="whisper-model"></select></label>
+            <label>文章の整え<select id="llm-model"></select></label>
+          </div>
+          <div class="light-models" id="light-models">
+            <span class="muted small" id="light-note"></span>
+            <button type="button" id="light-download">ダウンロード</button>
+          </div>
+          <div class="download" id="light-box" hidden>
+            <div class="progress" role="progressbar" aria-label="ダウンロードの進み具合" aria-valuemin="0" aria-valuemax="100">
+              <span id="light-bar"></span>
+            </div>
+            <div class="row">
+              <span class="label" id="light-label"></span>
+              <button type="button" id="light-cancel">中止</button>
+            </div>
+          </div>
+          <p class="error" id="models-error" role="alert"></p>
+        </section>
+
+        <section class="card inline" aria-labelledby="max-heading">
+          <div class="text">
+            <h2 id="max-heading"><label for="max-minutes">録音の最大時間</label></h2>
+            <span class="muted small">この時間に達すると録音を止め、そこまでの内容を入力します</span>
+          </div>
+          <select id="max-minutes">
+            <option value="1">1 分</option>
+            <option value="3">3 分</option>
+            <option value="5">5 分</option>
+            <option value="10">10 分</option>
+          </select>
+          <span class="saved" data-saved="recording"></span>
+        </section>
+
+        <section class="card" aria-labelledby="about-heading">
+          <h2 id="about-heading">このアプリについて</h2>
+          <p class="muted small">音声と文字はこのコンピューターの中だけで処理され、外部には送信されません。</p>
+          <dl class="facts">
+            <dt>モデルの場所</dt>
+            <dd id="models-dir"></dd>
+            <dd><button type="button" class="link" id="open-models">フォルダを開く</button></dd>
+            <dt>空きメモリ</dt>
+            <dd id="memory" class="wide"></dd>
+            <dt>バージョン</dt>
+            <dd id="version" class="wide"></dd>
+          </dl>
+          <div class="buttons">
+            <button type="button" id="open-logs">ログフォルダを開く</button>
+            <button type="button" id="redo-setup">セットアップをやり直す</button>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <div class="toast" id="toast" role="status" hidden>
+      <span id="toast-text"></span>
+      <button type="button" id="toast-undo">元に戻す</button>
+    </div>
+    <script type="module" src="/src/settings/main.ts"></script>
+  </body>
+</html>

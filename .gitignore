@@ -1,0 +1,7 @@
+/target
+node_modules/
+/app/dist/
+/app/src-tauri/gen/
+/models/
+*.wav
+.DS_Store

@@ -1,0 +1,37 @@
+[workspace]
+resolver = "2"
+members = ["crates/*", "app/src-tauri"]
+default-members = ["crates/*", "app/src-tauri"]
+
+[workspace.package]
+version = "1.0.0"
+edition = "2021"
+rust-version = "1.85"
+license = "MIT"
+repository = "https://github.com/kk-stack-dev/kotonoha-app"
+
+[workspace.dependencies]
+kotonoha-core = { path = "crates/kotonoha-core" }
+kotonoha-platform = { path = "crates/kotonoha-platform" }
+
+anyhow = "1"
+async-trait = "0.1"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+thiserror = "2"
+tokio = { version = "1", default-features = false }
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter"] }
+tracing-appender = "0.2"
+
+[workspace.lints.rust]
+unsafe_op_in_unsafe_fn = "deny"
+
+[workspace.lints.clippy]
+dbg_macro = "warn"
+todo = "warn"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+strip = true

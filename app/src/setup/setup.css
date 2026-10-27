@@ -1,0 +1,178 @@
+.wizard {
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.wizard-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 28px 40px 0;
+}
+
+.steps {
+  display: flex;
+  gap: 8px;
+}
+
+.steps span {
+  width: 48px;
+  height: 6px;
+  border-radius: 3px;
+  background: var(--border);
+}
+
+.steps span.done {
+  background: var(--accent);
+}
+
+.wizard-head p {
+  margin-left: 8px;
+}
+
+.step {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.step[hidden] {
+  display: none;
+}
+
+.intro {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 18px 40px 0;
+}
+
+.intro h1 {
+  font-size: 22px;
+  line-height: 1.4;
+}
+
+.content {
+  flex: 1;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  padding: 22px 40px;
+}
+
+.wizard-foot {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 40px 24px;
+  border-top: 1px solid var(--border);
+}
+
+.wizard-foot .primary {
+  margin-left: auto;
+}
+
+.wizard-foot .primary + .primary {
+  margin-left: 0;
+}
+
+#download-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.items {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.items li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.items li:last-child {
+  border-bottom: none;
+}
+
+.items .what {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.items .what span:first-child {
+  font-weight: 600;
+}
+
+.items .size {
+  font-variant-numeric: tabular-nums;
+  color: var(--muted);
+}
+
+.items .icon {
+  display: inline-flex;
+  color: var(--muted);
+}
+
+.items .icon.ok {
+  color: var(--success);
+}
+
+.manual {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.field-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.field-group .label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.try {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.try textarea {
+  resize: vertical;
+  font-size: 15px;
+  background: var(--bg);
+}
+
+.status-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-weight: 600;
+  min-height: 24px;
+}
+
+.status-line.success {
+  color: var(--success);
+}
+
+.status-line.warning {
+  color: var(--warning);
+}

@@ -1,0 +1,78 @@
+/* Design tokens shared by both pages. Fonts are listed explicitly so Japanese text renders with
+   each OS's native UI font (Hiragino on macOS, Yu Gothic UI / Meiryo on Windows). */
+:root {
+  --font-ui: system-ui, -apple-system, "Segoe UI", "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI",
+    "Meiryo", sans-serif;
+  --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Consolas, monospace;
+
+  --bg: #f7f7f5;
+  --surface: #ffffff;
+  --border: #e3e2de;
+  --text: #1d1d1b;
+  --muted: #6b6a66;
+  --accent: #2f6f62;
+  --accent-text: #ffffff;
+  --danger: #b4372f;
+  --warning: #9a6a00;
+  --success: #2f7a3e;
+  --accent-soft: #eef5f3;
+  --chip: #f0efeb;
+  --warning-soft: #fbf3e0;
+  --warning-border: #ecd9a8;
+  --warning-text: #5c3f00;
+  --radius: 10px;
+  color-scheme: light dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1b1b1a;
+    --surface: #242423;
+    --border: #3a3936;
+    --text: #ecebe7;
+    --muted: #a3a29c;
+    --accent: #6cbfa9;
+    --accent-text: #10201c;
+    --danger: #ef7d73;
+    --warning: #e4b44a;
+    --success: #74c387;
+    --accent-soft: #1d2e2a;
+    --chip: #2e2e2c;
+    --warning-soft: #2e2615;
+    --warning-border: #5a4820;
+    --warning-text: #f0d08a;
+  }
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  font-family: var(--font-ui);
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+
+svg .spin {
+  transform-origin: 12px 12px;
+  animation: spin 0.9s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  svg .spin {
+    animation: none;
+  }
+}

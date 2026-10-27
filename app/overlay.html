@@ -1,0 +1,20 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Kotonoha</title>
+  </head>
+  <body>
+    <div id="pill" class="pill" role="status" aria-live="polite" hidden>
+      <span id="icon" class="icon"></span>
+      <div class="text">
+        <div id="title" class="title"></div>
+        <div id="detail" class="detail"></div>
+      </div>
+      <span id="clock" class="clock" hidden></span>
+      <span id="meter" class="meter" hidden><span id="meter-fill"></span></span>
+    </div>
+    <script type="module" src="/src/overlay/main.ts"></script>
+  </body>
+</html>

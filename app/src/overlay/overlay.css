@@ -1,0 +1,100 @@
+html,
+body {
+  background: transparent;
+  height: 100%;
+  overflow: hidden;
+  user-select: none;
+  cursor: default;
+}
+
+body {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* The overlay always uses its own dark surface: it floats over arbitrary apps. */
+.pill {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: calc(100% - 16px);
+  min-height: 52px;
+  padding: 8px 18px;
+  border-radius: 26px;
+  background: rgba(24, 24, 22, 0.9);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: #f2f1ed;
+  backdrop-filter: blur(12px);
+}
+
+.pill[hidden] {
+  display: none;
+}
+
+.icon {
+  display: inline-flex;
+  flex: none;
+}
+
+.text {
+  flex: 1;
+  min-width: 0;
+  text-align: center;
+}
+
+.title {
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.detail {
+  font-size: 12px;
+  color: rgba(242, 241, 237, 0.72);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.detail:empty {
+  display: none;
+}
+
+.clock {
+  flex: none;
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  color: rgba(242, 241, 237, 0.85);
+}
+
+.meter {
+  flex: none;
+  width: 44px;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.16);
+  overflow: hidden;
+}
+
+#meter-fill {
+  display: block;
+  height: 100%;
+  width: 0;
+  background: #f2f1ed;
+  transition: width 80ms linear;
+}
+
+.tone-recording .icon {
+  color: #ff6b5e;
+}
+.tone-success .icon {
+  color: #7fd492;
+}
+.tone-info .icon {
+  color: #8cc8ff;
+}
+.tone-warning .icon {
+  color: #f2c45a;
+}

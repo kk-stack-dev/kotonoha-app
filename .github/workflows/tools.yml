@@ -1,0 +1,174 @@
+name: Tools
+
+# Builds whisper-cli and llama-completion, unmodified, for each supported machine. The app downloads
+# these during first-run setup instead of shipping them in the installer.
+#
+# - On a change to this file: build and smoke-test only.
+# - Run by hand with a release name (tools-v1, tools-v2, ...), or on a pushed `tools-v*` tag: also publish
+#   a release with the executables, SHA256SUMS, the upstream licenses and catalog.rs, the entries to
+#   paste into TOOL_CATALOG (crates/kotonoha-core/src/tools.rs).
+
+on:
+  push:
+    branches: [main]
+    tags: ["tools-v*"]
+    # Ignored for tags, which always build
+    paths: [".github/workflows/tools.yml"]
+  pull_request:
+    paths: [".github/workflows/tools.yml"]
+  workflow_dispatch:
+    inputs:
+      release:
+        description: "Release to publish (tools-v1, tools-v2, ...); empty to only build"
+        required: false
+        default: ""
+
+env:
+  WHISPER_REF: v1.9.5
+  LLAMA_REF: v0.7.0
+  # One self-contained executable per tool: static libraries, no OpenMP runtime, no network code
+  COMMON_FLAGS: >-
+    -DCMAKE_BUILD_TYPE=Release
+    -DBUILD_SHARED_LIBS=OFF
+    -DGGML_NATIVE=OFF
+    -DGGML_OPENMP=OFF
+  WHISPER_FLAGS: >-
+    -DWHISPER_BUILD_TESTS=OFF
+    -DWHISPER_BUILD_SERVER=OFF
+    -DWHISPER_SDL2=OFF
+    -DWHISPER_CURL=OFF
+  LLAMA_FLAGS: >-
+    -DLLAMA_BUILD_TESTS=OFF
+    -DLLAMA_BUILD_EXAMPLES=OFF
+    -DLLAMA_BUILD_SERVER=OFF
+    -DLLAMA_BUILD_APP=OFF
+    -DLLAMA_OPENSSL=OFF
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: mac-arm64
+            os: macos-latest
+            exe: ""
+            flags: -DCMAKE_OSX_ARCHITECTURES=arm64 -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 -DGGML_METAL=ON -DGGML_METAL_EMBED_LIBRARY=ON
+          # Intel Macs: built on Apple Silicon, CPU only (macOS 13 runs on Macs that all have AVX2)
+          - target: mac-x64
+            os: macos-latest
+            exe: ""
+            flags: >-
+              -DCMAKE_OSX_ARCHITECTURES=x86_64 -DCMAKE_OSX_DEPLOYMENT_TARGET=13.0 -DGGML_METAL=OFF
+              -DGGML_AVX=ON -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON -DGGML_BMI2=ON
+          # Static MSVC runtime so no Visual C++ redistributable is needed
+          - target: windows-x64
+            os: windows-latest
+            exe: .exe
+            flags: >-
+              -DCMAKE_POLICY_DEFAULT_CMP0091=NEW -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+              -DGGML_AVX=ON -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON -DGGML_BMI2=ON
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Fetch sources
+        run: |
+          git clone --depth 1 --branch "$WHISPER_REF" https://github.com/ggml-org/whisper.cpp whisper
+          git clone --depth 1 --branch "$LLAMA_REF" https://github.com/ggml-org/llama.cpp llama
+
+      - name: Build whisper-cli
+        run: |
+          cmake -S whisper -B whisper/build $COMMON_FLAGS $WHISPER_FLAGS ${{ matrix.flags }}
+          cmake --build whisper/build --config Release --target whisper-cli -j 4
+
+      - name: Build llama-completion
+        run: |
+          cmake -S llama -B llama/build $COMMON_FLAGS $LLAMA_FLAGS ${{ matrix.flags }}
+          cmake --build llama/build --config Release --target llama-completion -j 4
+
+      - name: Collect
+        run: |
+          mkdir out
+          find whisper/build -type f -name "whisper-cli${{ matrix.exe }}" -exec cp {} "out/whisper-cli-${{ matrix.target }}${{ matrix.exe }}" \;
+          find llama/build -type f -name "llama-completion${{ matrix.exe }}" -exec cp {} "out/llama-completion-${{ matrix.target }}${{ matrix.exe }}" \;
+          ls -l out
+          test "$(ls out | wc -l)" -eq 2
+
+      # Each file must start on its own. A missing library or runtime fails before main() runs, with
+      # a code a usage error (0 or 1) never has
+      - name: Smoke test
+        if: matrix.target != 'mac-x64'
+        run: |
+          for f in out/*; do
+            code=0
+            "$f" --help > /dev/null 2>&1 || code=$?
+            echo "$f exited with $code"
+            test "$code" -le 1
+          done
+
+      - name: Linked libraries
+        if: runner.os == 'macOS'
+        run: for f in out/*; do otool -L "$f"; done
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tools-${{ matrix.target }}
+          path: out/*
+          if-no-files-found: error
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/tools-v') || startsWith(inputs.release, 'tools-v')
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      TAG: ${{ inputs.release || github.ref_name }}
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+
+      # Both projects are MIT licensed; their notices travel with the binaries
+      - name: Licenses
+        run: |
+          git clone --depth 1 --branch "$WHISPER_REF" https://github.com/ggml-org/whisper.cpp whisper
+          git clone --depth 1 --branch "$LLAMA_REF" https://github.com/ggml-org/llama.cpp llama
+          cp whisper/LICENSE out/LICENSE-whisper.cpp.txt
+          cp llama/LICENSE out/LICENSE-llama.cpp.txt
+
+      - name: Checksums and catalog entries
+        working-directory: out
+        run: |
+          sha256sum whisper-cli-* llama-completion-* > SHA256SUMS
+          base="https://github.com/${GITHUB_REPOSITORY}/releases/download/${TAG}"
+          {
+            echo "// Generated by .github/workflows/tools.yml for ${TAG}"
+            echo "// (whisper.cpp ${WHISPER_REF}, llama.cpp ${LLAMA_REF})"
+            for f in whisper-cli-* llama-completion-*; do
+              case "$f" in whisper-cli-*) tool=Whisper ;; *) tool=Llama ;; esac
+              case "$f" in *mac-arm64*) target=MacArm64 ;; *mac-x64*) target=MacX64 ;; *) target=WindowsX64 ;; esac
+              echo "CatalogTool {"
+              echo "    tool: Tool::$tool,"
+              echo "    target: Target::$target,"
+              echo "    url: \"$base/$f\","
+              echo "    sha256: \"$(sha256sum "$f" | cut -d' ' -f1)\","
+              echo "    bytes: $(stat -c%s "$f"),"
+              echo "},"
+            done
+          } > catalog.rs
+          cat SHA256SUMS catalog.rs
+
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          # Creates the tag on the built commit when it does not exist yet
+          # Not "latest": that name is kept for app releases, which install.sh and install.ps1 fetch
+          gh release create "$TAG" out/* --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" --latest=false \
+            --title "Tools $TAG" \
+            --notes "whisper.cpp ${WHISPER_REF} and llama.cpp ${LLAMA_REF}, downloaded by Kotonoha during setup. Entries for TOOL_CATALOG are in catalog.rs."
