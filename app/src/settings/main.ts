@@ -332,6 +332,31 @@ function showUpdateAvailable(latest: string): void {
   updateAvailable = true;
   el("update-result").textContent = `新しいバージョン ${latest} があります`;
   el("update-action").textContent = "ダウンロードページを開く";
+  el("update-now").hidden = false;
+}
+
+function setUpdateConfirm(open: boolean): void {
+  el("update-confirm").hidden = !open;
+  el("update-now").hidden = open || !updateAvailable;
+}
+
+/** Starts the update. On success the app quits and restarts, so this normally never returns. */
+async function runUpdate(): Promise<void> {
+  const run = el<HTMLButtonElement>("update-run");
+  const cancel = el<HTMLButtonElement>("update-cancel");
+  run.disabled = true;
+  cancel.disabled = true;
+  el("update-result").textContent = "更新しています。終わると自動で起動し直します";
+  try {
+    await api.startUpdate();
+    el("update-result").textContent = "更新しました。起動し直してください";
+  } catch (e) {
+    el("update-result").textContent = errorText(e);
+  } finally {
+    run.disabled = false;
+    cancel.disabled = false;
+    setUpdateConfirm(false);
+  }
 }
 
 /** Checks for a new version only when asked; when one exists, the same button opens the release page. */
@@ -461,6 +486,9 @@ async function main(): Promise<void> {
   const pending = await api.pendingUpdate();
   if (pending) showUpdateAvailable(pending);
   void events.onUpdateAvailable(showUpdateAvailable);
+  el("update-now").addEventListener("click", () => setUpdateConfirm(true));
+  el("update-cancel").addEventListener("click", () => setUpdateConfirm(false));
+  el("update-run").addEventListener("click", () => void runUpdate());
   el("update-action").addEventListener("click", () => void onUpdateAction());
   el("redo-setup").addEventListener("click", () => void api.openSetup());
 

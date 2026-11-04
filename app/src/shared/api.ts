@@ -44,6 +44,7 @@ export const api = {
   openLogs: () => invoke<void>("open_logs"),
   getAutostart: () => invoke<boolean>("get_autostart"),
   checkUpdate: () => invoke<UpdateStatus>("check_update"),
+  startUpdate: () => invoke<void>("start_update"),
   pendingUpdate: () => invoke<string | null>("pending_update"),
   openReleasePage: () => invoke<void>("open_release_page"),
   setAutostart: (enabled: boolean) => invoke<void>("set_autostart", { enabled }),

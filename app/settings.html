@@ -187,7 +187,17 @@
             <dd id="version" class="wide"></dd>
             <dt>更新</dt>
             <dd id="update-result" class="wide" role="status"></dd>
-            <dd><button type="button" class="link" id="update-action">更新を確認</button></dd>
+            <dd>
+              <button type="button" class="link" id="update-action">更新を確認</button>
+              <button type="button" class="link" id="update-now" hidden>今すぐ更新</button>
+            </dd>
+            <dd id="update-confirm" class="wide" hidden>
+              <p class="small">新しい版をダウンロードして、Kotonoha を終了して入れ替え、自動で起動し直します。</p>
+              <div class="buttons">
+                <button type="button" id="update-run">更新する</button>
+                <button type="button" id="update-cancel">やめる</button>
+              </div>
+            </dd>
           </dl>
           <div class="buttons">
             <button type="button" id="open-logs">ログフォルダを開く</button>

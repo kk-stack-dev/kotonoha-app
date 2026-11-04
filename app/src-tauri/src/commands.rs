@@ -392,6 +392,13 @@ pub async fn check_update<R: Runtime>(app: AppHandle<R>) -> Result<UpdateStatus,
     Ok(status)
 }
 
+/// Runs the bundled install script: downloads and verifies the latest release, quits this app, replaces
+/// it and starts the new one. Only called after the person confirms in the settings window.
+#[tauri::command]
+pub async fn start_update() -> Result<(), String> {
+    tauri::async_runtime::spawn_blocking(crate::updates::run_installer).await.map_err(|e| e.to_string())?
+}
+
 /// The newer version found earlier (at launch or by a check), for pages opened afterwards.
 #[tauri::command]
 pub fn pending_update(pending: State<'_, crate::updates::PendingUpdate>) -> Option<String> {

@@ -60,6 +60,13 @@ fi
 # Quit a running copy so it can be replaced
 if pgrep -xq Kotonoha; then
   osascript -e 'quit app "Kotonoha"' >/dev/null 2>&1 || true
+  # A tray app may ignore the quit request (the app's own update button runs this script), so stop it
+  waited=0
+  while pgrep -xq Kotonoha && [ "$waited" -lt 3 ]; do
+    sleep 1
+    waited=$((waited + 1))
+  done
+  pkill -x Kotonoha >/dev/null 2>&1 || true
   sleep 1
 fi
 

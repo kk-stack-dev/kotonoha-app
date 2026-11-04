@@ -82,6 +82,7 @@ pub fn run() {
             commands::check_update,
             commands::open_release_page,
             commands::pending_update,
+            commands::start_update,
         ])
         .setup(move |app| {
             // A menu bar app: no Dock icon, and never activated by showing the overlay
