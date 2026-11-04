@@ -72,11 +72,17 @@ fi
 
 rm -rf "$APP_DIR/Kotonoha.app"
 mv "$tmp/unpacked/Kotonoha.app" "$APP_DIR/"
-open "$APP_DIR/Kotonoha.app"
 if [ "$updating" = 1 ]; then
+  # The new build has a different ad-hoc signature, so macOS keeps the old microphone and accessibility
+  # entries as if they were granted while they no longer apply. Clear them (only for this app) so the
+  # permissions are asked for again.
+  tccutil reset Microphone dev.kotonoha.app >/dev/null 2>&1 || true
+  tccutil reset Accessibility dev.kotonoha.app >/dev/null 2>&1 || true
+  open "$APP_DIR/Kotonoha.app" --args --updated
   echo "更新しました: $APP_DIR/Kotonoha.app"
-  echo "設定とモデルはそのまま使えます。マイクやアクセシビリティの許可をもう一度求められたら、許可してください"
+  echo "設定とモデルはそのまま使えます。マイクとアクセシビリティの許可を、もう一度出してください（設定画面で案内します）"
 else
+  open "$APP_DIR/Kotonoha.app"
   echo "インストールしました: $APP_DIR/Kotonoha.app"
   echo "セットアップ画面の案内に沿って進めてください"
 fi

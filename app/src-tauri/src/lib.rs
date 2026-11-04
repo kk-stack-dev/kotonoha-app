@@ -110,7 +110,10 @@ pub fn run() {
                     let _ =
                         kotonoha_platform::audio::request_microphone_permission(std::time::Duration::from_secs(120));
                 });
-                if shortcut_failed {
+                // After an update the install script cleared the permissions; the settings window explains
+                // how to grant them again
+                let updated = std::env::args().any(|a| a == "--updated");
+                if shortcut_failed || updated {
                     windows::open_settings(handle);
                 }
             }

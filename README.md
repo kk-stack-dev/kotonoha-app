@@ -52,7 +52,7 @@ irm https://raw.githubusercontent.com/kk-stack-dev/kotonoha-app/main/install.ps1
 
 既定のショートカットは macOS が Option + Space、Windows が Ctrl + Alt + Space です。設定画面で変えられます。
 
-Mac では、更新するとマイクとアクセシビリティの許可が外れることがあります。そのときはもう一度許可してください。
+Mac では、更新するとマイクとアクセシビリティの許可が外れます。更新時にこのアプリの許可を消してから起動し直すので、設定画面の案内に沿ってもう一度許可してください。
 
 ## アンインストール
 
