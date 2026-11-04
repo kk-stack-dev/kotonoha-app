@@ -30,7 +30,7 @@ use tauri_plugin_autostart::MacosLauncher;
 pub fn run() {
     let dirs = AppDirs::discover().expect("no home directory");
     let _log_guard = logging::init(&dirs.logs);
-    tracing::info!(version = env!("CARGO_PKG_VERSION"), "Kotonoha starting");
+    tracing::info!(version = env!("CARGO_PKG_VERSION"), "Kotonoha Voice starting");
     let store = Arc::new(ConfigStore::open(dirs));
 
     let app = tauri::Builder::default()

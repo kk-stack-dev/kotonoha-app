@@ -1,4 +1,4 @@
-# Kotonoha（ことのは）
+# Kotonoha Voice（ことのは）
 
 話した言葉を、その場で入力欄に文字として入れる音声入力アプリです。macOS と Windows に対応しています。
 音声も文字も、すべて自分のコンピューターの中で処理されます。外部のサーバーには何も送りません。
@@ -38,7 +38,7 @@ curl -fsSL https://raw.githubusercontent.com/kk-stack-dev/kotonoha-app/main/inst
 irm https://raw.githubusercontent.com/kk-stack-dev/kotonoha-app/main/install.ps1 | iex
 ```
 
-インストールが終わると Kotonoha が起動し、セットアップ画面が開きます。新しい版が出たときも、同じ 1 行で更新できます。
+インストールが終わると Kotonoha Voice が起動し、セットアップ画面が開きます。新しい版が出たときも、同じ 1 行で更新できます。
 起動の数秒後に新しい版が出ているかを GitHub に問い合わせ、あればメニューバー（Windows は通知領域）のメニューと設定画面で知らせます。問い合わせるのは最新の版の番号だけで、音声や文字は送りません。設定画面で止められ、「更新を確認」ボタンで自分で調べることもできます。自動ではインストールしません。同じ 1 行を実行すると、新しい版へ更新できます。
 
 
@@ -58,7 +58,7 @@ Mac では、更新するとマイクとアクセシビリティの許可が外�
 
 - Mac：「アプリケーション」から Kotonoha.app をゴミ箱に入れます。設定とモデルも消すときは、
   `~/Library/Application Support/dev.Kotonoha.Kotonoha` と `~/Library/Logs/Kotonoha` も消します
-- Windows：「設定」>「アプリ」から Kotonoha をアンインストールします。設定とモデルも消すときは、
+- Windows：「設定」>「アプリ」から Kotonoha Voice をアンインストールします。設定とモデルも消すときは、
   `%LOCALAPPDATA%\Kotonoha` と `%APPDATA%\Kotonoha` も消します
 
 ## ソースからビルドする

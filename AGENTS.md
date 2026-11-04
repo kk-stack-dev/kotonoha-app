@@ -1,4 +1,4 @@
-# Kotonoha: AI エージェント向けの決まりごと（Claude Code / Codex 共通）
+# Kotonoha Voice: AI エージェント向けの決まりごと（Claude Code / Codex 共通）
 
 ## 守ること
 

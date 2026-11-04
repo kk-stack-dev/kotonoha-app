@@ -217,7 +217,7 @@ function renderPermissions(): void {
       ? "許可されています。"
       : mic === "notDetermined"
         ? "録音に必要です。ボタンを押すと macOS の確認画面が出ます。"
-        : "許可されていません。システム設定の「プライバシーとセキュリティ」>「マイク」で Kotonoha をオンにしてください。",
+        : "許可されていません。システム設定の「プライバシーとセキュリティ」>「マイク」で Kotonoha Voice をオンにしてください。",
     "必須",
     mic === "notDetermined"
       ? { label: "マイクを許可する", primary: true, run: api.requestMicrophone }
@@ -232,7 +232,7 @@ function renderPermissions(): void {
       : `許可しない場合は、文字をクリップボードにコピーするだけになります。${ctx.pasteLabel} で貼り付けてください。`,
     "任意",
     { label: "システム設定を開く", run: api.openInputPermissionSettings },
-    ["ボタンでシステム設定を開く", "一覧の Kotonoha をオンにする", "この画面に戻る（自動で確認します）"],
+    ["ボタンでシステム設定を開く", "一覧の Kotonoha Voice をオンにする", "この画面に戻る（自動で確認します）"],
   );
 }
 

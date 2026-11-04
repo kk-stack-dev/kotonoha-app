@@ -16,7 +16,7 @@ const OVERLAY_MARGIN: f64 = 72.0;
 /// A small always-on-top panel that can never take focus, so the paste lands in the app the user was typing in.
 pub fn create_overlay<R: Runtime>(app: &AppHandle<R>) -> tauri::Result<WebviewWindow<R>> {
     let window = WebviewWindowBuilder::new(app, OVERLAY, WebviewUrl::App("overlay.html".into()))
-        .title("Kotonoha")
+        .title("Kotonoha Voice")
         .inner_size(OVERLAY_WIDTH, OVERLAY_HEIGHT)
         .resizable(false)
         .decorations(false)
@@ -66,11 +66,11 @@ fn position_overlay<R: Runtime>(app: &AppHandle<R>, window: &WebviewWindow<R>) {
 }
 
 pub fn open_settings<R: Runtime>(app: &AppHandle<R>) {
-    open_page(app, SETTINGS, "settings.html", "Kotonoha 設定");
+    open_page(app, SETTINGS, "settings.html", "Kotonoha Voice 設定");
 }
 
 pub fn open_setup<R: Runtime>(app: &AppHandle<R>) {
-    open_page(app, SETUP, "setup.html", "Kotonoha セットアップ");
+    open_page(app, SETUP, "setup.html", "Kotonoha Voice セットアップ");
 }
 
 pub fn close_setup<R: Runtime>(app: &AppHandle<R>) {

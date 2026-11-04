@@ -38,7 +38,7 @@ pub fn create<R: Runtime>(app: &AppHandle<R>, tooltip: &str) -> tauri::Result<()
             &MenuItem::with_id(app, SETTINGS, "設定を開く", true, None::<&str>)?,
             &MenuItem::with_id(app, LOGS, "ログフォルダを開く", true, None::<&str>)?,
             &PredefinedMenuItem::separator(app)?,
-            &MenuItem::with_id(app, QUIT, "Kotonoha を終了", true, None::<&str>)?,
+            &MenuItem::with_id(app, QUIT, "Kotonoha Voice を終了", true, None::<&str>)?,
         ],
     )?;
     TrayIconBuilder::with_id(TRAY_ID)

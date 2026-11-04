@@ -412,5 +412,5 @@ pub fn set_autostart<R: Runtime>(app: AppHandle<R>, enabled: bool) -> Result<(),
 }
 
 pub fn tooltip(shortcut_label: &str) -> String {
-    format!("Kotonoha - {shortcut_label} で録音")
+    format!("Kotonoha Voice - {shortcut_label} で録音")
 }
