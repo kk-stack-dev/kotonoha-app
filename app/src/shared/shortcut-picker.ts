@@ -21,10 +21,31 @@ const PRESETS: Record<Platform, Shortcut[]> = {
   ],
 };
 
+// Hold-to-talk is a separate key from the tap shortcut, so its presets differ from the ones above
+const HOLD_PRESETS: Record<Platform, Shortcut[]> = {
+  macOS: [
+    { modifiers: ["alt", "shift"], key: "Space" },
+    { modifiers: [], key: "F6" },
+  ],
+  windows: [
+    { modifiers: ["ctrl", "alt", "shift"], key: "Space" },
+    { modifiers: [], key: "F10" },
+  ],
+  linux: [
+    { modifiers: ["ctrl", "alt", "shift"], key: "Space" },
+    { modifiers: [], key: "F10" },
+  ],
+};
+
 const MODIFIER_CODES = /^(Shift|Control|Alt|Meta|OS)(Left|Right)?$/;
 
 const same = (a: Shortcut, b: Shortcut) =>
   a.key === b.key && a.modifiers.length === b.modifiers.length && a.modifiers.every((m) => b.modifiers.includes(m));
+
+export interface PickerOptions {
+  /** Hold-to-talk: shows its own presets and a "not used" choice (saved as null). */
+  optional?: boolean;
+}
 
 export interface ShortcutPicker {
   render(): Promise<void>;
@@ -38,17 +59,19 @@ export function mountShortcutPicker(
   container: HTMLElement,
   error: HTMLElement,
   platform: Platform,
-  current: () => Shortcut,
-  save: (shortcut: Shortcut) => Promise<void>,
+  current: () => Shortcut | null,
+  save: (shortcut: Shortcut | null) => Promise<void>,
+  options: PickerOptions = {},
 ): ShortcutPicker {
+  const optional = options.optional ?? false;
   let capturing = false;
   const captureButton = document.createElement("button");
   captureButton.type = "button";
   captureButton.className = "choice other";
 
-  async function apply(shortcut: Shortcut): Promise<void> {
+  async function apply(shortcut: Shortcut | null): Promise<void> {
     try {
-      await api.shortcutLabel(shortcut);
+      if (shortcut) await api.shortcutLabel(shortcut);
       await save(shortcut);
       error.textContent = "";
     } catch (e) {
@@ -99,22 +122,28 @@ export function mountShortcutPicker(
 
   async function render(): Promise<void> {
     const saved = current();
-    const presets = PRESETS[platform];
+    const presets = (optional ? HOLD_PRESETS : PRESETS)[platform];
+    const off = document.createElement("button");
+    off.type = "button";
+    off.className = "choice";
+    off.textContent = "使わない";
+    off.setAttribute("aria-pressed", String(saved === null));
+    off.addEventListener("click", () => void apply(null).then(render));
     const buttons = await Promise.all(
       presets.map(async (preset) => {
         const button = document.createElement("button");
         button.type = "button";
         button.className = "choice";
         button.textContent = await api.shortcutLabel(preset);
-        button.setAttribute("aria-pressed", String(same(preset, saved)));
+        button.setAttribute("aria-pressed", String(saved !== null && same(preset, saved)));
         button.addEventListener("click", () => void apply(preset).then(render));
         return button;
       }),
     );
-    const custom = !presets.some((p) => same(p, saved));
+    const custom = saved !== null && !presets.some((p) => same(p, saved));
     captureButton.textContent = custom ? await api.shortcutLabel(saved) : "ほかのキー...";
     captureButton.setAttribute("aria-pressed", String(custom));
-    container.replaceChildren(...buttons, captureButton);
+    container.replaceChildren(...(optional ? [off] : []), ...buttons, captureButton);
   }
 
   return { render };

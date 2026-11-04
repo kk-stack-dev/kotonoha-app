@@ -10,7 +10,10 @@ export interface Shortcut {
 }
 
 export interface Settings {
+  /** Tap: press to start, press again to stop. */
   shortcut: Shortcut;
+  /** Hold: record while held. null when unused. */
+  holdShortcut: Shortcut | null;
   maxRecordingSeconds: number;
   language: string;
   removeFillers: boolean;
@@ -65,6 +68,8 @@ export type Phase =
 export interface UiContext {
   platform: Platform;
   shortcutLabel: string;
+  /** Empty when hold-to-talk is off. */
+  holdShortcutLabel: string;
   pasteLabel: string;
   version: string;
 }

@@ -10,7 +10,7 @@ use kotonoha_core::ports::{ConfigSource, SystemProbe};
 use kotonoha_core::session::{Phase, SessionHandle};
 use kotonoha_core::settings::Settings;
 use kotonoha_core::setup::{self, Download, Plan, Present, Progress};
-use kotonoha_core::shortcut::{paste_label, Platform, Shortcut};
+use kotonoha_core::shortcut::{paste_label, Platform, Shortcut, ShortcutError};
 use kotonoha_core::tools::{Target, TOOL_CATALOG};
 use kotonoha_core::update::{UpdateStatus, RELEASES_PAGE};
 use kotonoha_platform::audio::{self, MicPermission};
@@ -33,6 +33,8 @@ type Store<'a> = State<'a, Arc<ConfigStore>>;
 pub struct UiContext {
     platform: Platform,
     shortcut_label: String,
+    /// Empty when hold-to-talk is off.
+    hold_shortcut_label: String,
     paste_label: String,
     version: &'static str,
 }
@@ -43,6 +45,7 @@ pub fn ui_context(store: Store<'_>) -> UiContext {
     UiContext {
         platform,
         shortcut_label: store.settings().shortcut.label(platform),
+        hold_shortcut_label: store.settings().hold_shortcut.map(|s| s.label(platform)).unwrap_or_default(),
         paste_label: paste_label(platform),
         version: env!("CARGO_PKG_VERSION"),
     }
@@ -67,11 +70,14 @@ pub fn get_settings(store: Store<'_>) -> Settings {
 /// the old one is restored and nothing is saved.
 #[tauri::command]
 pub fn save_settings<R: Runtime>(app: AppHandle<R>, store: Store<'_>, settings: Settings) -> Result<(), String> {
-    settings.shortcut.validate().map_err(|e| format!("ショートカットが不正です: {e}"))?;
+    settings.validate_shortcuts().map_err(|e| match e {
+        ShortcutError::Duplicate => "単押しと長押しには、別のキーを選んでください".to_owned(),
+        e => format!("ショートカットが不正です: {e}"),
+    })?;
     let previous = store.settings();
-    if settings.shortcut != previous.shortcut {
-        if let Err(e) = shortcut::register(&app, &settings.shortcut) {
-            let _ = shortcut::register(&app, &previous.shortcut);
+    if settings.shortcut != previous.shortcut || settings.hold_shortcut != previous.hold_shortcut {
+        if let Err(e) = shortcut::register(&app, &settings) {
+            let _ = shortcut::register(&app, &previous);
             return Err(format!("このショートカットは登録できません（他のアプリが使っている可能性があります）: {e}"));
         }
     }
@@ -95,7 +101,7 @@ pub fn suspend_shortcut<R: Runtime>(app: AppHandle<R>) -> Result<(), String> {
 
 #[tauri::command]
 pub fn resume_shortcut<R: Runtime>(app: AppHandle<R>, store: Store<'_>) -> Result<(), String> {
-    shortcut::register(&app, &store.settings().shortcut)
+    shortcut::register(&app, &store.settings())
 }
 
 #[tauri::command]

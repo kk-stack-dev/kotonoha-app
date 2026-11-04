@@ -26,12 +26,22 @@
       <div class="panel" role="tabpanel" id="panel-general" aria-labelledby="tab-general">
         <section class="card" aria-labelledby="shortcut-heading">
           <div class="card-head">
-            <h2 id="shortcut-heading">ショートカット</h2>
+            <h2 id="shortcut-heading">単押しのショートカット</h2>
             <span class="saved" data-saved="shortcut"></span>
           </div>
           <div class="choices" id="shortcut-choices" role="group" aria-labelledby="shortcut-heading"></div>
-          <p class="muted small">押して話し、もう一度押すと入力します。押したまま話して離しても同じです。</p>
+          <p class="muted small">押して話し、もう一度押すと入力します。</p>
           <p class="error" id="shortcut-error" role="alert"></p>
+        </section>
+
+        <section class="card" aria-labelledby="hold-heading">
+          <div class="card-head">
+            <h2 id="hold-heading">長押しのショートカット</h2>
+            <span class="saved" data-saved="hold"></span>
+          </div>
+          <div class="choices" id="hold-choices" role="group" aria-labelledby="hold-heading"></div>
+          <p class="muted small">押している間だけ録音し、離すと入力します。上のショートカットとは別のキーを選びます。</p>
+          <p class="error" id="hold-error" role="alert"></p>
         </section>
 
         <section class="card list" aria-labelledby="input-heading">

@@ -38,8 +38,6 @@ pub struct Timing {
     pub result_linger: Duration,
     /// A recording with no samples at all for this long is reported as "no audio", not "too short".
     pub min_silent_recording: Duration,
-    /// A shortcut held at least this long records only while held; a shorter press toggles.
-    pub hold_to_talk: Duration,
     pub chunks: ChunkPlan,
 }
 
@@ -50,7 +48,6 @@ impl Default for Timing {
             mic_stop_timeout: Duration::from_secs(3),
             result_linger: Duration::from_millis(1_800),
             min_silent_recording: Duration::from_secs(1),
-            hold_to_talk: Duration::from_millis(400),
             chunks: ChunkPlan::default(),
         }
     }
@@ -59,9 +56,9 @@ impl Default for Timing {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Command {
     Toggle,
-    /// The shortcut went down: toggles, and remembers when, so that a long hold can stop on release.
-    Press,
-    Release,
+    /// The hold shortcut went down: starts (or stops) recording, which then ends when the key is released.
+    HoldStart,
+    HoldEnd,
     Cancel,
 }
 
@@ -79,13 +76,14 @@ impl SessionHandle {
         self.commands.try_send(Command::Toggle).is_ok()
     }
 
-    /// The shortcut went down. A tap toggles recording; holding it records until [`Self::release`].
-    pub fn press(&self) -> bool {
-        self.commands.try_send(Command::Press).is_ok()
+    /// The hold shortcut went down. Recording lasts until [`Self::hold_end`].
+    pub fn hold_start(&self) -> bool {
+        self.commands.try_send(Command::HoldStart).is_ok()
     }
 
-    pub fn release(&self) -> bool {
-        self.commands.try_send(Command::Release).is_ok()
+    /// The hold shortcut was released. Stops a recording that the hold shortcut started; otherwise ignored.
+    pub fn hold_end(&self) -> bool {
+        self.commands.try_send(Command::HoldEnd).is_ok()
     }
 
     /// Stops recording and discards it.
@@ -140,8 +138,8 @@ impl Controller {
         let mut next = self.commands.recv().await;
         while let Some(command) = next {
             next = match command {
-                Command::Cancel | Command::Release => self.commands.recv().await,
-                Command::Toggle | Command::Press => match self.session(command).await {
+                Command::Cancel | Command::HoldEnd => self.commands.recv().await,
+                Command::Toggle | Command::HoldStart => match self.session(command).await {
                     None => {
                         self.phase.send_replace(Phase::Idle);
                         self.commands.recv().await
@@ -168,7 +166,7 @@ impl Controller {
 
     /// Runs one session, started by `trigger`. `None` means it was cancelled.
     async fn session(&mut self, trigger: Command) -> Option<Outcome> {
-        let mut held_since = (trigger == Command::Press).then(Instant::now);
+        let mut held = trigger == Command::HoldStart;
         self.phase.send_replace(Phase::Starting);
         let settings = self.services.config.settings();
         let dictionary = self.services.config.dictionary();
@@ -183,7 +181,7 @@ impl Controller {
         tracing::info!(?mode, model = %file_name(&whisper_model), "session starting");
 
         let (audio_tx, mut audio) = mpsc::unbounded_channel();
-        let (stream, mut device, released) = match self.open_microphone(audio_tx, &mut held_since).await {
+        let (stream, mut device, released) = match self.open_microphone(audio_tx, held).await {
             Ok(opened) => opened,
             Err(failure) => return Some(failed(failure)),
         };
@@ -234,8 +232,8 @@ impl Controller {
                     None => break StopReason::Lost("audio stream ended".into()),
                 },
                 command = self.commands.recv() => match command {
-                    Some(Command::Toggle | Command::Press) => break StopReason::User,
-                    Some(Command::Release) => early_stop = self.hold_ended(&mut held_since),
+                    Some(Command::Toggle | Command::HoldStart) => break StopReason::User,
+                    Some(Command::HoldEnd) => early_stop = std::mem::take(&mut held).then_some(StopReason::User),
                     Some(Command::Cancel) | None => break StopReason::Cancelled,
                 },
                 Some(result) = result_rx.recv() => results.push(result),
@@ -359,21 +357,14 @@ impl Controller {
         })
     }
 
-    /// A release stops the recording only if the press that started it was held long enough;
-    /// otherwise that press was a tap, and the recording goes on until the next one.
-    fn hold_ended(&self, held_since: &mut Option<Instant>) -> Option<StopReason> {
-        let since = held_since.take()?;
-        (since.elapsed() >= self.timing.hold_to_talk).then_some(StopReason::User)
-    }
-
     /// Opens the microphone off the async runtime, giving up after the start timeout. A device
     /// that opens late is dropped (and so stopped) by the abandoned blocking task. Presses meanwhile
     /// are ignored (users press again when a start feels slow), but the end of a hold is kept and
-    /// returned, so a short hold-to-talk still stops once the device is open.
+    /// returned, so a short hold still stops once the device is open.
     async fn open_microphone(
         &mut self,
         events: mpsc::UnboundedSender<AudioEvent>,
-        held_since: &mut Option<Instant>,
+        mut held: bool,
     ) -> Result<(Box<dyn MicStream>, String, Option<StopReason>), Failure> {
         let microphone = self.services.microphone.clone();
         let open =
@@ -384,7 +375,7 @@ impl Controller {
             tokio::select! {
                 opened = &mut open => break opened,
                 Some(command) = self.commands.recv() => match command {
-                    Command::Release => released = released.or(self.hold_ended(held_since)),
+                    Command::HoldEnd => released = released.or(std::mem::take(&mut held).then_some(StopReason::User)),
                     _ => tracing::info!(?command, "ignored: microphone is starting"),
                 },
             }

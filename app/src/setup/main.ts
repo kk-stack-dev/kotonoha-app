@@ -242,7 +242,9 @@ const trialTone = { neutral: "", recording: "", busy: "", success: "success", in
 
 async function renderTry(): Promise<void> {
   ctx = await api.uiContext();
-  el("try-how").textContent = `${ctx.shortcutLabel} を一度押して話し、もう一度押すと文字になります。押したまま話して離しても同じです。`;
+  el("try-how").textContent = ctx.holdShortcutLabel
+    ? `${ctx.shortcutLabel} を一度押して話し、もう一度押すと文字になります。${ctx.holdShortcutLabel} は押している間だけ録音し、離すと文字になります。`
+    : `${ctx.shortcutLabel} を一度押して話し、もう一度押すと文字になります。`;
   el("try-hint").textContent =
     "この欄にカーソルを置いて試してください。ほかのアプリでも、カーソルのある場所に同じように入ります。";
 }
@@ -275,12 +277,25 @@ async function main(): Promise<void> {
     ctx.platform,
     () => settings.shortcut,
     async (shortcut) => {
-      await api.saveSettings({ ...settings, shortcut });
+      await api.saveSettings({ ...settings, shortcut: shortcut! });
+      settings = await api.getSettings();
+      await renderTry();
+      await holdPicker.render();
+    },
+  );
+  const holdPicker = mountShortcutPicker(
+    el("hold-choices"),
+    el("hold-error"),
+    ctx.platform,
+    () => settings.holdShortcut,
+    async (holdShortcut) => {
+      await api.saveSettings({ ...settings, holdShortcut });
       settings = await api.getSettings();
       await renderTry();
     },
+    { optional: true },
   );
-  await Promise.all([picker.render(), renderTry()]);
+  await Promise.all([picker.render(), holdPicker.render(), renderTry()]);
 
   el("download-start").addEventListener("click", () => void startDownload());
   for (const button of document.querySelectorAll<HTMLButtonElement>("[data-action]")) {

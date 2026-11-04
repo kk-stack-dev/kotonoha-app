@@ -80,6 +80,8 @@ pub enum ShortcutError {
     ModifierAsKey,
     #[error("letter, digit and space keys need at least one modifier")]
     NeedsModifier,
+    #[error("the tap and hold shortcuts must be different keys")]
+    Duplicate,
 }
 
 impl Shortcut {

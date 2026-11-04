@@ -4,12 +4,15 @@ use std::path::PathBuf;
 
 use serde::{Deserialize, Serialize};
 
-use crate::shortcut::{Platform, Shortcut};
+use crate::shortcut::{Platform, Shortcut, ShortcutError};
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
 #[serde(default, rename_all = "camelCase")]
 pub struct Settings {
+    /// Press once to start recording and again to stop.
     pub shortcut: Shortcut,
+    /// Record only while this key is held. `None` leaves hold-to-talk off.
+    pub hold_shortcut: Option<Shortcut>,
     /// Recording stops by itself after this long.
     pub max_recording_seconds: u32,
     /// Whisper language code.
@@ -33,6 +36,7 @@ impl Settings {
     pub fn default_for(platform: Platform) -> Self {
         Self {
             shortcut: Shortcut::default_for(platform),
+            hold_shortcut: None,
             max_recording_seconds: 600,
             language: "ja".into(),
             remove_fillers: true,
@@ -44,6 +48,20 @@ impl Settings {
             models: ModelSettings::default(),
             tools: ToolPaths::default(),
         }
+    }
+}
+
+impl Settings {
+    /// Both shortcuts must be valid, and the two must differ.
+    pub fn validate_shortcuts(&self) -> Result<(), ShortcutError> {
+        self.shortcut.validate()?;
+        if let Some(hold) = &self.hold_shortcut {
+            hold.validate()?;
+            if *hold == self.shortcut {
+                return Err(ShortcutError::Duplicate);
+            }
+        }
+        Ok(())
     }
 }
 
@@ -82,6 +100,19 @@ mod tests {
         assert!(s.llm_rewrite);
         assert!(s.check_updates_on_launch);
         assert_eq!(s.max_recording_seconds, 600);
+    }
+
+    #[test]
+    fn hold_shortcut_is_off_by_default_and_must_differ() {
+        let mut s = Settings::default_for(Platform::MacOS);
+        assert_eq!(s.hold_shortcut, None);
+        assert!(s.validate_shortcuts().is_ok());
+        s.hold_shortcut = Some(s.shortcut.clone());
+        assert_eq!(s.validate_shortcuts(), Err(ShortcutError::Duplicate));
+        s.hold_shortcut = Some(Shortcut::new([], "F5").unwrap());
+        assert!(s.validate_shortcuts().is_ok());
+        s.hold_shortcut = Some(Shortcut { modifiers: Default::default(), key: "KeyA".into() });
+        assert_eq!(s.validate_shortcuts(), Err(ShortcutError::NeedsModifier));
     }
 
     #[test]

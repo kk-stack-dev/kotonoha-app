@@ -405,40 +405,51 @@ async fn audio_queued_at_stop_is_chunked_normally() {
 }
 
 #[tokio::test(start_paused = true)]
-async fn holding_the_shortcut_records_until_release() {
+async fn holding_the_hold_shortcut_records_until_release() {
     let h = harness(
         MicScript::Samples(vec![tone(1.0), tone(0.5)]),
         vec![Ok("押している間だけ".into())],
         vec![whisper_file()],
         FakeSink::default(),
     );
-    assert!(h.handle.press());
+    assert!(h.handle.hold_start());
     wait_for(&h.handle, |p| matches!(p, Phase::Recording { .. })).await;
     time::sleep(Duration::from_millis(1_500)).await;
-    assert!(h.handle.release());
+    assert!(h.handle.hold_end());
     assert_eq!(finished(&h.handle).await, Outcome::Inserted);
 }
 
 #[tokio::test(start_paused = true)]
-async fn a_tap_keeps_recording_until_the_next_press() {
+async fn a_quick_hold_still_stops_on_release() {
     let h = harness(
         MicScript::Samples(vec![tone(1.0), tone(0.5)]),
-        vec![Ok("一度押し".into())],
+        vec![Ok("短い".into())],
         vec![whisper_file()],
         FakeSink::default(),
     );
-    assert!(h.handle.press());
+    assert!(h.handle.hold_start());
     wait_for(&h.handle, |p| matches!(p, Phase::Recording { .. })).await;
-    time::sleep(Duration::from_millis(100)).await;
-    assert!(h.handle.release());
+    assert!(h.handle.hold_end());
+    assert_eq!(finished(&h.handle).await, Outcome::Inserted);
+}
+
+#[tokio::test(start_paused = true)]
+async fn a_toggle_recording_ignores_hold_release() {
+    let h = harness(
+        MicScript::Samples(vec![tone(1.0), tone(0.5)]),
+        vec![Ok("単押し".into())],
+        vec![whisper_file()],
+        FakeSink::default(),
+    );
+    assert!(h.handle.toggle());
+    wait_for(&h.handle, |p| matches!(p, Phase::Recording { .. })).await;
+    assert!(h.handle.hold_end());
     time::sleep(Duration::from_millis(1_500)).await;
     assert!(matches!(*h.handle.phase().borrow(), Phase::Recording { .. }));
 
-    assert!(h.handle.press());
-    assert!(h.handle.release());
+    assert!(h.handle.toggle());
     assert_eq!(finished(&h.handle).await, Outcome::Inserted);
     wait_for(&h.handle, |p| *p == Phase::Idle).await;
-    // The release after the stopping press does not start anything
     assert_eq!(h.mic.opened.load(Ordering::SeqCst), 1);
 }
 
@@ -446,7 +457,7 @@ async fn a_tap_keeps_recording_until_the_next_press() {
 #[tokio::test]
 async fn a_hold_released_while_the_microphone_opens_still_stops() {
     let (release_tx, release_rx) = std_mpsc::channel();
-    let timing = Timing { hold_to_talk: Duration::from_millis(100), ..test_timing() };
+    let timing = test_timing();
     let h = harness_with(
         MicScript::Hang(Arc::new(Mutex::new(Some(release_rx)))),
         vec![],
@@ -454,10 +465,10 @@ async fn a_hold_released_while_the_microphone_opens_still_stops() {
         FakeSink::default(),
         timing,
     );
-    assert!(h.handle.press());
+    assert!(h.handle.hold_start());
     wait_for(&h.handle, |p| *p == Phase::Starting).await;
     time::sleep(Duration::from_millis(200)).await;
-    assert!(h.handle.release());
+    assert!(h.handle.hold_end());
     release_tx.send(()).unwrap();
     assert_eq!(finished(&h.handle).await, Outcome::Failed { failure: Failure::TooShort });
     assert_eq!(h.mic.stopped.load(Ordering::SeqCst), 1);

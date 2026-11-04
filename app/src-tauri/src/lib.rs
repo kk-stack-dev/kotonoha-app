@@ -49,7 +49,7 @@ pub fn run() {
             if captures && matches!(event, WindowEvent::Destroyed) {
                 let app = window.app_handle();
                 if let Some(store) = app.try_state::<Arc<ConfigStore>>() {
-                    let _ = shortcut::register(app, &store.settings().shortcut);
+                    let _ = shortcut::register(app, &store.settings());
                 }
             }
         })
@@ -97,7 +97,7 @@ pub fn run() {
             bridge::spawn(handle.clone(), session);
             updates::spawn_launch_check(handle.clone());
 
-            let shortcut_failed = shortcut::register(handle, &store.settings().shortcut)
+            let shortcut_failed = shortcut::register(handle, &store.settings())
                 .inspect_err(|e| tracing::warn!(error = %e, "could not register the shortcut"))
                 .is_err();
             if !can_dictate(&store) {

@@ -394,11 +394,26 @@ async function main(): Promise<void> {
     ctx.platform,
     () => settings.shortcut,
     async (shortcut) => {
-      await api.saveSettings({ ...settings, shortcut });
+      await api.saveSettings({ ...settings, shortcut: shortcut! });
       settings = await api.getSettings();
       ctx = await api.uiContext();
       showSaved("shortcut");
+      await holdPicker.render();
     },
+  );
+  const holdPicker = mountShortcutPicker(
+    el("hold-choices"),
+    el("hold-error"),
+    ctx.platform,
+    () => settings.holdShortcut,
+    async (holdShortcut) => {
+      await api.saveSettings({ ...settings, holdShortcut });
+      settings = await api.getSettings();
+      ctx = await api.uiContext();
+      showSaved("hold");
+      await picker.render();
+    },
+    { optional: true },
   );
 
   for (const [id, key] of SWITCHES) {
@@ -453,11 +468,11 @@ async function main(): Promise<void> {
   window.addEventListener("focus", () => void refresh());
   await events.onSettingsChanged(async () => {
     settings = await api.getSettings();
-    await Promise.all([refresh(), picker.render()]);
+    await Promise.all([refresh(), picker.render(), holdPicker.render()]);
   });
 
   renderDictionary();
-  await Promise.all([refresh(), picker.render()]);
+  await Promise.all([refresh(), picker.render(), holdPicker.render()]);
 }
 
 void main();
