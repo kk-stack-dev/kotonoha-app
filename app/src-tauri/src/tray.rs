@@ -67,7 +67,7 @@ pub fn create<R: Runtime>(app: &AppHandle<R>, tooltip: &str) -> tauri::Result<()
 /// Adds (or relabels) the menu item that tells a newer version exists and opens its download page.
 pub fn show_update<R: Runtime>(app: &AppHandle<R>, latest: &str) {
     let Some(tray_menu) = app.try_state::<TrayMenu<R>>() else { return };
-    let label = format!("新しいバージョン {latest} をダウンロード");
+    let label = format!("最新バージョン {latest} が利用可能です");
     let Ok(mut slot) = tray_menu.update.lock() else { return };
     if let Some(item) = slot.as_ref() {
         let _ = item.set_text(label);

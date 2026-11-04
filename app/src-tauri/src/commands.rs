@@ -82,7 +82,7 @@ pub fn save_settings<R: Runtime>(app: AppHandle<R>, store: Store<'_>, settings: 
         }
     }
     let label = settings.shortcut.label(Platform::current());
-    store.save_settings(settings).map_err(|e| format!("設定を保存できません: {e}"))?;
+    store.save_settings(settings).map_err(|e| format!("設定を保存できませんでした: {e}"))?;
     tray::set_tooltip(&app, &tooltip(&label));
     let _ = app.emit("settings-changed", ());
     Ok(())
@@ -114,16 +114,16 @@ pub fn get_dictionary(store: Store<'_>) -> Dictionary {
 pub fn add_word(store: Store<'_>, word: String, variants: String) -> Result<Dictionary, String> {
     let added = store
         .update_dictionary(|d| d.add(&word, Entry::parse_variants(&variants)))
-        .map_err(|e| format!("辞書を保存できません: {e}"))?;
+        .map_err(|e| format!("辞書を保存できませんでした: {e}"))?;
     if !added {
-        return Err("空の語か、すでに登録されている語です".into());
+        return Err("単語が未入力であるか、既に登録されています".into());
     }
     Ok(store.dictionary())
 }
 
 #[tauri::command]
 pub fn remove_word(store: Store<'_>, word: String) -> Result<Dictionary, String> {
-    store.update_dictionary(|d| d.remove(&word)).map_err(|e| format!("辞書を保存できません: {e}"))?;
+    store.update_dictionary(|d| d.remove(&word)).map_err(|e| format!("辞書を保存できませんでした: {e}"))?;
     Ok(store.dictionary())
 }
 
@@ -131,12 +131,12 @@ pub fn remove_word(store: Store<'_>, word: String) -> Result<Dictionary, String>
 pub fn edit_word(store: Store<'_>, word: String, new_word: String, variants: String) -> Result<Dictionary, String> {
     store
         .update_dictionary(|d| d.edit(&word, &new_word, Entry::parse_variants(&variants)))
-        .map_err(|e| format!("辞書を保存できません: {e}"))?
+        .map_err(|e| format!("辞書を保存できませんでした: {e}"))?
         .map_err(|e| match e {
-            EditError::Empty => "表記を入力してください".to_owned(),
-            EditError::Duplicate => "すでに登録されている語です".to_owned(),
-            EditError::NotFound => "この語は見つかりません".to_owned(),
-            EditError::Builtin => "標準の言葉は変更できません".to_owned(),
+            EditError::Empty => "単語を入力してください".to_owned(),
+            EditError::Duplicate => "既に登録されている単語です".to_owned(),
+            EditError::NotFound => "指定された単語が見つかりません".to_owned(),
+            EditError::Builtin => "標準辞書の単語は変更できません".to_owned(),
         })?;
     Ok(store.dictionary())
 }
@@ -144,7 +144,7 @@ pub fn edit_word(store: Store<'_>, word: String, new_word: String, variants: Str
 /// Turns a word on or off without removing it. Shipped words can only be turned off this way.
 #[tauri::command]
 pub fn set_word_enabled(store: Store<'_>, word: String, enabled: bool) -> Result<Dictionary, String> {
-    store.update_dictionary(|d| d.set_enabled(&word, enabled)).map_err(|e| format!("辞書を保存できません: {e}"))?;
+    store.update_dictionary(|d| d.set_enabled(&word, enabled)).map_err(|e| format!("辞書を保存できませんでした: {e}"))?;
     Ok(store.dictionary())
 }
 
@@ -261,7 +261,7 @@ pub async fn start_download<R: Runtime>(
     set: DownloadSet,
 ) -> Result<(), String> {
     if downloads.running.swap(true, Ordering::SeqCst) {
-        return Err("ダウンロード中です".into());
+        return Err("現在ダウンロード中です".into());
     }
     downloads.cancel.store(false, Ordering::SeqCst);
     let models_dir = store.models_dir();
@@ -385,7 +385,7 @@ pub async fn check_update<R: Runtime>(app: AppHandle<R>) -> Result<UpdateStatus,
         .await
         .map_err(|e| e.to_string())?
         .inspect_err(|e| tracing::warn!(error = %e, "update check failed"))
-        .map_err(|_| "更新を確認できませんでした。ネットワークの接続を確かめて、もう一度お試しください。".to_string())?;
+        .map_err(|_| "アップデートの確認に失敗しました。インターネット接続を確認して、もう一度お試しください。".to_string())?;
     if let UpdateStatus::Available { latest } = &status {
         crate::updates::announce(&app, latest);
     }
@@ -421,7 +421,7 @@ pub fn get_autostart<R: Runtime>(app: AppHandle<R>) -> bool {
 pub fn set_autostart<R: Runtime>(app: AppHandle<R>, enabled: bool) -> Result<(), String> {
     let manager = app.autolaunch();
     let result = if enabled { manager.enable() } else { manager.disable() };
-    result.map_err(|e| format!("自動起動を変更できません: {e}"))
+    result.map_err(|e| format!("自動起動の設定を変更できませんでした: {e}"))
 }
 
 pub fn tooltip(shortcut_label: &str) -> String {

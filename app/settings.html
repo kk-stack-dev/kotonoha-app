@@ -10,9 +10,9 @@
       <div class="title-row">
         <h1>Kotonoha Voice</h1>
         <p class="muted small" id="app-version"></p>
-        <p class="muted small">変更はすぐに反映されます</p>
+        <p class="muted small">設定は自動で保存されます</p>
       </div>
-      <div class="tabs" role="tablist" aria-label="設定の項目">
+      <div class="tabs" role="tablist" aria-label="設定タブ">
         <button type="button" role="tab" id="tab-general" aria-controls="panel-general" aria-selected="true">一般</button>
         <button type="button" role="tab" id="tab-dictionary" aria-controls="panel-dictionary" aria-selected="false" tabindex="-1">辞書</button>
         <button type="button" role="tab" id="tab-advanced" aria-controls="panel-advanced" aria-selected="false" tabindex="-1">詳細</button>
@@ -30,7 +30,7 @@
             <span class="saved" data-saved="shortcut"></span>
           </div>
           <div class="choices" id="shortcut-choices" role="group" aria-labelledby="shortcut-heading"></div>
-          <p class="muted small">押して話し、もう一度押すと入力します。</p>
+          <p class="muted small">キーを押して話し、もう一度押すとテキストが入力されます。</p>
           <p class="error" id="shortcut-error" role="alert"></p>
         </section>
 
@@ -44,78 +44,91 @@
           <p class="error" id="hold-error" role="alert"></p>
         </section>
 
-        <section class="card list" aria-labelledby="input-heading">
+        <section class="card list" aria-labelledby="insert-heading">
           <div class="card-head">
-            <h2 id="input-heading">入力と文章</h2>
-            <span class="saved" data-saved="behavior"></span>
+            <h2 id="insert-heading">入力・貼り付け</h2>
+            <span class="saved" data-saved="insert"></span>
           </div>
           <label class="setting">
             <span class="text">
-              <span>入力欄に自動で貼り付ける</span>
-              <span class="small">オフにすると、クリップボードにコピーするだけになります</span>
+              <span>入力欄へ自動で直接入力する</span>
+              <span class="small">オフにすると、クリップボードへのコピーのみ行います</span>
             </span>
             <input type="checkbox" role="switch" id="auto-insert" />
           </label>
           <label class="setting nested" id="keep-clipboard-row">
-            <span class="text"><span>貼り付けた後もクリップボードに残す</span></span>
+            <span class="text"><span>入力後もクリップボードにテキストを保持する</span></span>
             <input type="checkbox" role="switch" id="keep-clipboard" />
           </label>
+          <p class="error" id="insert-error" role="alert"></p>
+        </section>
+
+        <section class="card list" aria-labelledby="format-heading">
+          <div class="card-head">
+            <h2 id="format-heading">文章整形・AI校正</h2>
+            <span class="saved" data-saved="formatting"></span>
+          </div>
           <label class="setting">
-            <span class="text"><span>「えーと」「うーん」などを取り除く</span></span>
+            <span class="text"><span>「えーと」「あのー」などの言い淀みを取り除く</span></span>
             <input type="checkbox" role="switch" id="remove-fillers" />
           </label>
           <label class="setting">
             <span class="text">
-              <span>文の終わりで改行する</span>
-              <span class="small">「。」ごとに改行します。長い文章では、言語モデルが話題のまとまりごとに改行します</span>
+              <span>文末で自動改行する</span>
+              <span class="small">句点（。）ごとに改行します。長文では話題のまとまりに合わせて自動改行します</span>
             </span>
             <input type="checkbox" role="switch" id="line-breaks" />
           </label>
           <div class="setting" id="llm-row">
             <label class="text" for="llm-rewrite">
-              <span>句読点や言い直しを整える</span>
-              <span class="small" id="llm-note">このコンピューターの中で動く言語モデルで整えます</span>
+              <span>AIによる文章校正（句読点や言い直しの補正）</span>
+              <span class="small" id="llm-note">端末内のローカルAI（言語モデル）で自然な文章に整えます</span>
             </label>
             <input type="checkbox" role="switch" id="llm-rewrite" />
           </div>
-          <p class="error" id="behavior-error" role="alert"></p>
+          <p class="error" id="format-error" role="alert"></p>
         </section>
 
-        <section class="card list" aria-label="起動">
+        <section class="card list" aria-labelledby="launch-heading">
+          <div class="card-head">
+            <h2 id="launch-heading">起動</h2>
+            <span class="saved" data-saved="launch"></span>
+          </div>
           <label class="setting">
-            <span class="text"><span>ログイン時に起動する</span></span>
+            <span class="text"><span>ログイン時に自動起動する</span></span>
             <input type="checkbox" role="switch" id="autostart" />
           </label>
           <label class="setting">
             <span class="text">
-              <span>起動時に新しいバージョンを確認する</span>
-              <span class="small">GitHub に最新の版を問い合わせるだけです。音声や文字は送りません</span>
+              <span>起動時にアップデートを確認する</span>
+              <span class="small">GitHub Releases の最新バージョンのみを確認します。音声やテキストが外部に送信されることはありません</span>
             </span>
             <input type="checkbox" role="switch" id="check-updates" />
           </label>
+          <p class="error" id="launch-error" role="alert"></p>
         </section>
       </div>
 
       <!-- Dictionary -->
       <div class="panel" role="tabpanel" id="panel-dictionary" aria-labelledby="tab-dictionary" hidden>
-        <p class="muted">人名や製品名など、正しく書いてほしい言葉を登録します。</p>
+        <p class="muted">人名や専門用語、製品名など、正しく変換したい単語を登録します。</p>
 
         <form class="card add-word" id="dictionary-form">
-          <label for="new-word">正しい書き方</label>
-          <label for="new-variants">間違えやすい書き方（任意）</label>
+          <label for="new-word">登録する単語</label>
+          <label for="new-variants">誤変換・読みの例（任意）</label>
           <span></span>
           <input id="new-word" placeholder="例: ひだまり工房" required autocomplete="off" />
           <input id="new-variants" placeholder="例: ひだまりこうぼう、日だまり工房" autocomplete="off" />
           <button type="submit" class="primary">追加</button>
           <span></span>
-          <span class="muted small hint">読点（、）かカンマで区切って複数入れられます</span>
+          <span class="muted small hint">複数の候補は読点（、）またはカンマ区切りで入力できます</span>
         </form>
         <p class="error" id="dictionary-error" role="alert"></p>
 
         <section class="card words" aria-labelledby="mine-heading">
           <h2 id="mine-heading"></h2>
           <ul id="user-words"></ul>
-          <p class="muted small empty" id="user-empty">まだ登録していません。</p>
+          <p class="muted small empty" id="user-empty">登録されている単語はありません。</p>
         </section>
 
         <section class="card words" aria-labelledby="builtin-heading">
@@ -123,7 +136,7 @@
             <span class="chevron" aria-hidden="true"></span>
             <span class="text">
               <span id="builtin-heading" class="heading"></span>
-              <span class="muted small">よく使われる製品名です。不要なものはオフにできます</span>
+              <span class="muted small">よく使われる一般的な製品・サービス名です。不要なものは無効化できます</span>
             </span>
           </button>
           <ul id="builtin-words" hidden></ul>
@@ -134,27 +147,27 @@
       <div class="panel" role="tabpanel" id="panel-advanced" aria-labelledby="tab-advanced" hidden>
         <section class="card" aria-labelledby="models-heading">
           <div class="card-head">
-            <h2 id="models-heading">モデル</h2>
+            <h2 id="models-heading">モデル設定</h2>
             <span class="saved" data-saved="models"></span>
           </div>
           <p class="muted small">
-            通常は「自動」のままで使えます。軽量モデルは精度が少し下がりますが、メモリの少ないコンピューターでも速く動きます。
+            通常は「自動」のままで快適にご利用いただけます。軽量モデルは認識精度がわずかに下がるものの、メモリ消費を抑えて軽快に動作します。
           </p>
           <div class="model-fields">
-            <label>文字起こし<select id="whisper-model"></select></label>
-            <label>文章の整え<select id="llm-model"></select></label>
+            <label>音声認識（Whisper）<select id="whisper-model"></select></label>
+            <label>文章校正（LLM）<select id="llm-model"></select></label>
           </div>
           <div class="light-models" id="light-models">
             <span class="muted small" id="light-note"></span>
             <button type="button" id="light-download">ダウンロード</button>
           </div>
           <div class="download" id="light-box" hidden>
-            <div class="progress" role="progressbar" aria-label="ダウンロードの進み具合" aria-valuemin="0" aria-valuemax="100">
+            <div class="progress" role="progressbar" aria-label="ダウンロード進捗" aria-valuemin="0" aria-valuemax="100">
               <span id="light-bar"></span>
             </div>
             <div class="row">
               <span class="label" id="light-label"></span>
-              <button type="button" id="light-cancel">中止</button>
+              <button type="button" id="light-cancel">キャンセル</button>
             </div>
           </div>
           <p class="error" id="models-error" role="alert"></p>
@@ -162,33 +175,36 @@
 
         <section class="card inline" aria-labelledby="max-heading">
           <div class="text">
-            <h2 id="max-heading"><label for="max-minutes">録音の最大時間</label></h2>
-            <span class="muted small">この時間に達すると録音を止め、そこまでの内容を入力します</span>
+            <h2 id="max-heading"><label for="max-minutes">最大録音時間</label></h2>
+            <span class="muted small">指定した時間に達すると自動で録音を停止し、テキストを入力します</span>
           </div>
           <select id="max-minutes">
-            <option value="1">1 分</option>
-            <option value="3">3 分</option>
-            <option value="5">5 分</option>
-            <option value="10">10 分</option>
+            <option value="1">1分</option>
+            <option value="3">3分</option>
+            <option value="5">5分</option>
+            <option value="10">10分</option>
           </select>
           <span class="saved" data-saved="recording"></span>
         </section>
 
         <section class="card" aria-labelledby="about-heading">
           <h2 id="about-heading">このアプリについて</h2>
-          <p class="muted small">音声と文字はこのコンピューターの中だけで処理され、外部には送信されません。</p>
+          <p class="muted small">音声認識や文章校正はすべて端末内で完結し、外部サーバーへ送信されることはありません。</p>
           <dl class="facts">
-            <dt>モデルの場所</dt>
+            <dt>モデルの保存先</dt>
             <dd id="models-dir"></dd>
             <dd><button type="button" class="link" id="open-models">フォルダを開く</button></dd>
-            <dt>空きメモリ</dt>
+            <dt>ログの保存先</dt>
+            <dd class="muted small">動作記録・診断用ログ</dd>
+            <dd><button type="button" class="link" id="open-logs">フォルダを開く</button></dd>
+            <dt>利用可能なメモリ</dt>
             <dd id="memory" class="wide"></dd>
             <dt>バージョン</dt>
             <dd id="version" class="wide"></dd>
-            <dt>更新</dt>
+            <dt>アップデート</dt>
             <dd id="update-result" class="wide" role="status"></dd>
             <dd>
-              <button type="button" class="link" id="update-action">更新を確認</button>
+              <button type="button" class="link" id="update-action">アップデートを確認</button>
               <button type="button" class="link" id="update-now" hidden>今すぐ更新</button>
             </dd>
             <dd id="update-confirm" class="wide" hidden>
@@ -199,9 +215,12 @@
               </div>
             </dd>
           </dl>
-          <div class="buttons">
-            <button type="button" id="open-logs">ログフォルダを開く</button>
-            <button type="button" id="redo-setup">セットアップをやり直す</button>
+          <div class="troubleshoot">
+            <div class="text">
+              <span class="label">初期セットアップの再実行</span>
+              <span class="muted small">初期設定やモデルの再ダウンロードをやり直したい場合に実行します</span>
+            </div>
+            <button type="button" id="redo-setup">セットアップ画面を開く</button>
           </div>
         </section>
       </div>

@@ -15,8 +15,8 @@ export function formatMemory(mb: number): string {
 }
 
 export const purposeLabel: Record<ModelKind, string> = {
-  whisper: "文字起こし",
-  llm: "文章の整え",
+  whisper: "音声認識",
+  llm: "文章校正",
 };
 
 /** 標準モデル / 軽量モデル for catalog files, the file name for anything the user added. */
@@ -35,8 +35,8 @@ export function installCommand(platform: Platform, tool: Tool): string | null {
 }
 
 export const toolLabel: Record<Tool, string> = {
-  whisper: "文字起こし（whisper.cpp）",
-  llama: "文章の整え（llama.cpp）",
+  whisper: "音声認識（whisper.cpp）",
+  llama: "文章校正（llama.cpp）",
 };
 
 export function fileName(path: string): string {

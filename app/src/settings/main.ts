@@ -101,16 +101,16 @@ function banner(title: string, note: string, action: string, run: () => unknown)
 function renderBanners(): void {
   const list: HTMLElement[] = [];
   if (!status.ready) {
-    list.push(banner("準備が終わっていません", "文字起こしに使うファイルがまだありません。", "セットアップを開く", api.openSetup));
+    list.push(banner("初期セットアップが未完了です", "音声認識に必要なモデルファイルが見つかりません。", "セットアップを開く", api.openSetup));
   }
   if (status.microphonePermission === "denied") {
-    list.push(banner("マイクの許可が外れています", "このままでは録音できません。", "システム設定を開く", api.openMicrophoneSettings));
+    list.push(banner("マイクへのアクセスが許可されていません", "音声を録音するにはマイクのアクセス許可が必要です。", "システム設定を開く", api.openMicrophoneSettings));
   }
   if (ctx.platform === "macOS" && settings.autoInsert && !status.inputPermission) {
     list.push(
       banner(
-        "自動で貼り付けられません",
-        `アクセシビリティの許可がないため、コピーだけになります。${ctx.pasteLabel} で貼り付けてください。`,
+        "テキストを自動入力できません",
+        `アクセシビリティ権限がないため、クリップボードへのコピーのみ行われます（${ctx.pasteLabel} で貼り付け可能）。`,
         "システム設定を開く",
         api.openInputPermissionSettings,
       ),
@@ -121,17 +121,24 @@ function renderBanners(): void {
 
 // ---------------------------------------------------------------- general
 
-const SWITCHES: [string, "autoInsert" | "keepOnClipboard" | "removeFillers" | "lineBreaks" | "llmRewrite" | "checkUpdatesOnLaunch"][] = [
-  ["auto-insert", "autoInsert"],
-  ["keep-clipboard", "keepOnClipboard"],
-  ["remove-fillers", "removeFillers"],
-  ["line-breaks", "lineBreaks"],
-  ["llm-rewrite", "llmRewrite"],
-  ["check-updates", "checkUpdatesOnLaunch"],
+interface SwitchDef {
+  id: string;
+  key: "autoInsert" | "keepOnClipboard" | "removeFillers" | "lineBreaks" | "llmRewrite" | "checkUpdatesOnLaunch";
+  section: string;
+  errorId: string;
+}
+
+const SWITCHES: SwitchDef[] = [
+  { id: "auto-insert", key: "autoInsert", section: "insert", errorId: "insert-error" },
+  { id: "keep-clipboard", key: "keepOnClipboard", section: "insert", errorId: "insert-error" },
+  { id: "remove-fillers", key: "removeFillers", section: "formatting", errorId: "format-error" },
+  { id: "line-breaks", key: "lineBreaks", section: "formatting", errorId: "format-error" },
+  { id: "llm-rewrite", key: "llmRewrite", section: "formatting", errorId: "format-error" },
+  { id: "check-updates", key: "checkUpdatesOnLaunch", section: "launch", errorId: "launch-error" },
 ];
 
 function renderGeneral(): void {
-  for (const [id, key] of SWITCHES) el<HTMLInputElement>(id).checked = settings[key];
+  for (const item of SWITCHES) el<HTMLInputElement>(item.id).checked = settings[item.key];
 
   // Keeping the clipboard only matters when pasting
   const keep = el<HTMLInputElement>("keep-clipboard");
@@ -143,17 +150,17 @@ function renderGeneral(): void {
   const llm = el<HTMLInputElement>("llm-rewrite");
   const missing =
     status.memoryMode === "critical"
-      ? "空きメモリが少ないため、いまは使えません"
+      ? "空きメモリが不足しているため、現在は利用できません"
       : !status.llamaTool
-        ? "llama.cpp が入っていないため使えません"
+        ? "llama.cpp がインストールされていないため利用できません"
         : !status.models.some((m) => m.kind === "llm")
-          ? "文章の整え用のモデルがないため使えません"
+          ? "文章校正モデルがダウンロードされていないため利用できません"
           : null;
   llm.disabled = missing !== null;
   if (missing) llm.checked = false;
   el("llm-row").classList.toggle("off", missing !== null);
   el("llm-row").classList.toggle("disabled", missing !== null);
-  el("llm-note").textContent = missing ?? "このコンピューターの中で動く言語モデルで整えます";
+  el("llm-note").textContent = missing ?? "端末内のローカルAI（言語モデル）で自然な文章に整えます";
 }
 
 // ---------------------------------------------------------------- dictionary
@@ -222,7 +229,7 @@ function editRow(li: HTMLLIElement, entry: DictionaryEntry): HTMLLIElement {
   const cancel = document.createElement("button");
   cancel.type = "button";
   cancel.className = "quiet";
-  cancel.textContent = "取り消し";
+  cancel.textContent = "キャンセル";
   const commit = async () => {
     if (await dictionaryChange(api.editWord(entry.word, word.value, variants.value))) {
       editing = null;
@@ -248,11 +255,11 @@ function editRow(li: HTMLLIElement, entry: DictionaryEntry): HTMLLIElement {
 function renderDictionary(): void {
   const mine = dictionary.entries.filter((e) => e.source === "user");
   const builtin = dictionary.entries.filter((e) => e.source === "builtin");
-  el("mine-heading").textContent = `自分で登録した言葉（${mine.length}）`;
+  el("mine-heading").textContent = `登録済み単語（${mine.length}）`;
   el("user-words").replaceChildren(...mine.map(wordRow));
   el("user-empty").hidden = mine.length > 0;
   const off = builtin.filter((e) => !e.enabled).length;
-  el("builtin-heading").textContent = `標準の言葉（${builtin.length}${off > 0 ? `、うち ${off} 語はオフ` : ""}）`;
+  el("builtin-heading").textContent = `標準辞書（${builtin.length}${off > 0 ? `、うち ${off} 件無効` : ""}）`;
   el("builtin-words").replaceChildren(...builtin.map(wordRow));
 }
 
@@ -307,7 +314,7 @@ function fillModelSelect(select: HTMLSelectElement, kind: ModelKind, chosen: str
     return o;
   };
   const files = status.models.filter((m) => m.kind === kind);
-  const options = [option("", "自動（空きメモリに合わせて選択）")];
+  const options = [option("", "自動選択（空きメモリに応じて最適化）")];
   options.push(...files.map((m) => option(m.path, modelLabel(m, status.catalog))));
   if (chosen && !files.some((m) => m.path === chosen)) options.push(option(chosen, `${fileName(chosen)}（見つかりません）`));
   select.replaceChildren(...options);
@@ -319,7 +326,7 @@ function renderAdvanced(): void {
   fillModelSelect(el("llm-model"), "llm", settings.models.llm);
   const light = status.catalog.filter((m) => m.tier === "light" && !m.present);
   el("light-models").hidden = light.length === 0 || !el("light-box").hidden;
-  el("light-note").textContent = `軽量モデルはまだダウンロードしていません（合計 ${formatBytes(light.reduce((s, m) => s + m.bytes, 0))}）`;
+  el("light-note").textContent = `軽量モデルは未ダウンロードです（合計 ${formatBytes(light.reduce((s, m) => s + m.bytes, 0))}）`;
   el<HTMLSelectElement>("max-minutes").value = String(Math.round(settings.maxRecordingSeconds / 60));
   el("models-dir").textContent = status.modelsDir;
   el("memory").textContent = formatMemory(status.availableMemoryMb);
@@ -330,8 +337,8 @@ let updateAvailable = false;
 
 function showUpdateAvailable(latest: string): void {
   updateAvailable = true;
-  el("update-result").textContent = `新しいバージョン ${latest} があります`;
-  el("update-action").textContent = "ダウンロードページを開く";
+  el("update-result").textContent = `最新バージョン ${latest} が利用可能です`;
+  el("update-action").textContent = "リリースページを開く";
   el("update-now").hidden = false;
 }
 
@@ -367,13 +374,13 @@ async function onUpdateAction(): Promise<void> {
   }
   const button = el<HTMLButtonElement>("update-action");
   button.disabled = true;
-  el("update-result").textContent = "確認しています...";
+  el("update-result").textContent = "アップデートを確認中...";
   try {
     const result = await api.checkUpdate();
     if (result.kind === "available") {
       showUpdateAvailable(result.latest);
     } else {
-      el("update-result").textContent = "最新のバージョンです";
+      el("update-result").textContent = "最新バージョンを使用中です";
     }
   } catch (e) {
     el("update-result").textContent = errorText(e);
@@ -441,10 +448,10 @@ async function main(): Promise<void> {
     { optional: true },
   );
 
-  for (const [id, key] of SWITCHES) {
-    const input = el<HTMLInputElement>(id);
+  for (const item of SWITCHES) {
+    const input = el<HTMLInputElement>(item.id);
     input.addEventListener("change", async () => {
-      if (!(await save({ [key]: input.checked }, "behavior", "behavior-error"))) input.checked = !input.checked;
+      if (!(await save({ [item.key]: input.checked }, item.section, item.errorId))) input.checked = !input.checked;
       renderGeneral();
       renderBanners();
     });
@@ -454,9 +461,10 @@ async function main(): Promise<void> {
   autostart.addEventListener("change", async () => {
     try {
       await api.setAutostart(autostart.checked);
-      el("behavior-error").textContent = "";
+      el("launch-error").textContent = "";
+      showSaved("launch");
     } catch (e) {
-      el("behavior-error").textContent = errorText(e);
+      el("launch-error").textContent = errorText(e);
       autostart.checked = !autostart.checked;
     }
   });

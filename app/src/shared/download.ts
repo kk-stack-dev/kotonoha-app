@@ -14,7 +14,7 @@ export interface DownloadView {
 
 export function progressText(p: DownloadProgress): string {
   const percent = Math.floor((p.done / Math.max(p.total, 1)) * 100);
-  const position = p.count > 1 ? `${p.count} 個中 ${p.index} 個目（${purposeLabel[p.purpose]}）` : purposeLabel[p.purpose];
+  const position = p.count > 1 ? `${p.count} 件中 ${p.index} 件目: ${purposeLabel[p.purpose]}` : purposeLabel[p.purpose];
   return `${position}  ${formatBytes(p.done)} / ${formatBytes(p.total)}（${percent}%）`;
 }
 
@@ -22,11 +22,11 @@ export function progressText(p: DownloadProgress): string {
 export async function runDownload(set: DownloadSet, view: DownloadView): Promise<boolean> {
   view.box.hidden = false;
   view.bar.style.width = "0%";
-  view.label.textContent = "準備しています";
+  view.label.textContent = "ダウンロードの準備中...";
   view.cancel.disabled = false;
   const onCancel = () => {
     view.cancel.disabled = true;
-    view.label.textContent = "中止しています";
+    view.label.textContent = "キャンセル処理中...";
     void api.cancelDownload();
   };
   view.cancel.addEventListener("click", onCancel);

@@ -68,10 +68,10 @@ function renderDownload(): void {
   const rows = purposes.map((purpose) => {
     const planned = status.plan.downloads.filter((d) => d.purpose === purpose);
     const missingTool = status.plan.manual.includes(purpose === "whisper" ? "whisper" : "llama");
-    if (planned.length === 0 && !missingTool) return statusRow(true, purposeLabel[purpose], "準備できています");
+    if (planned.length === 0 && !missingTool) return statusRow(true, purposeLabel[purpose], "準備完了");
     const model = planned.find((d) => d.destination === "models");
     const bytes = planned.reduce((sum, d) => sum + d.bytes, 0);
-    const note = [model ? tierName(model.file) : null, bytes > 0 ? formatBytes(bytes) : null, missingTool ? "ツールは手動で入れます" : null]
+    const note = [model ? tierName(model.file) : null, bytes > 0 ? formatBytes(bytes) : null, missingTool ? "ツールの手動インストールが必要" : null]
       .filter(Boolean)
       .join("・");
     return statusRow(false, purposeLabel[purpose], note);
@@ -81,9 +81,9 @@ function renderDownload(): void {
   const hasModels = status.plan.downloads.some((d) => d.destination === "models");
   el("download-note").textContent =
     status.memoryMode === "critical"
-      ? "空きメモリが少ないため、文章の整えは使いません。"
+      ? "利用可能なメモリが少ないため、文章校正機能はスキップされます。"
       : hasModels
-        ? `空きメモリ ${formatMemory(status.availableMemoryMb)} に合わせて選びました。あとで設定の「詳細」から変えられます。`
+        ? `お使いの環境の空きメモリ（${formatMemory(status.availableMemoryMb)}）に合わせて最適なモデルを選択しました。後から設定の「詳細」で変更できます。`
         : "";
 
   el("manual").replaceChildren(...status.plan.manual.map(manualCard));
@@ -111,8 +111,8 @@ function manualCard(tool: Tool): HTMLLIElement {
   note.className = "note";
   const command = installCommand(ctx.platform, tool);
   note.textContent = command
-    ? "このコンピューター向けのダウンロードがないため、ターミナルで次のコマンドを実行してください。終わったらこの画面に戻ると、自動で確認し直します。"
-    : "このコンピューター向けのダウンロードがありません。whisper.cpp の Windows 版を入れ、PATH の通った場所に置いてください。";
+    ? "お使いの環境向けの自動ダウンロードが用意されていないため、ターミナルで以下のコマンドを実行してください。完了後にこの画面へ戻ると、自動的に再認識されます。"
+    : "お使いの環境向けの自動ダウンロードが用意されていません。whisper.cpp の Windows 版をインストールし、PATH（環境変数）が通った場所に配置してください。";
   body.append(title, note);
   if (command) {
     const row = document.createElement("div");
@@ -214,10 +214,10 @@ function renderPermissions(): void {
     mic === "granted",
     "マイク",
     mic === "granted"
-      ? "許可されています。"
+      ? "アクセスが許可されています。"
       : mic === "notDetermined"
-        ? "録音に必要です。ボタンを押すと macOS の確認画面が出ます。"
-        : "許可されていません。システム設定の「プライバシーとセキュリティ」>「マイク」で Kotonoha Voice をオンにしてください。",
+        ? "音声の録音に必要です。ボタンを押すと macOS の確認ダイアログが表示されます。"
+        : "アクセスが許可されていません。システム設定の「プライバシーとセキュリティ」>「マイク」で Kotonoha Voice を有効にしてください。",
     "必須",
     mic === "notDetermined"
       ? { label: "マイクを許可する", primary: true, run: api.requestMicrophone }
@@ -226,13 +226,13 @@ function renderPermissions(): void {
   permissionCard(
     el("input-status"),
     status.inputPermission,
-    "アクセシビリティ（自動で貼り付けるため）",
+    "アクセシビリティ（テキスト自動入力）",
     status.inputPermission
-      ? "許可されています。"
-      : `許可しない場合は、文字をクリップボードにコピーするだけになります。${ctx.pasteLabel} で貼り付けてください。`,
+      ? "アクセスが許可されています。"
+      : `許可しない場合、テキストはクリップボードにのみコピーされます（${ctx.pasteLabel} で貼り付け可能）。`,
     "任意",
     { label: "システム設定を開く", run: api.openInputPermissionSettings },
-    ["ボタンでシステム設定を開く", "一覧の Kotonoha Voice をオンにする", "この画面に戻る（自動で確認します）"],
+    ["「システム設定を開く」をクリックする", "リスト内の「Kotonoha Voice」を有効にする", "この画面に戻る（自動で再チェックされます）"],
   );
 }
 
@@ -243,10 +243,10 @@ const trialTone = { neutral: "", recording: "", busy: "", success: "success", in
 async function renderTry(): Promise<void> {
   ctx = await api.uiContext();
   el("try-how").textContent = ctx.holdShortcutLabel
-    ? `${ctx.shortcutLabel} を一度押して話し、もう一度押すと文字になります。${ctx.holdShortcutLabel} は押している間だけ録音し、離すと文字になります。`
-    : `${ctx.shortcutLabel} を一度押して話し、もう一度押すと文字になります。`;
+    ? `${ctx.shortcutLabel} を押して話し、もう一度押すとテキストが入力されます。${ctx.holdShortcutLabel} は押している間だけ録音し、離すとテキストが入力されます。`
+    : `${ctx.shortcutLabel} を押して話し、もう一度押すとテキストが入力されます。`;
   el("try-hint").textContent =
-    "この欄にカーソルを置いて試してください。ほかのアプリでも、カーソルのある場所に同じように入ります。";
+    "下の入力欄にカーソルを置いてお試しください。普段お使いのアプリでも、同様にカーソル位置へ直接入力されます。";
 }
 
 function showPhase(phase: Parameters<typeof phaseMessage>[0]): void {

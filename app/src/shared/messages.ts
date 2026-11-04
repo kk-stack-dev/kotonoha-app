@@ -29,7 +29,7 @@ export function phaseMessage(phase: Phase, ctx: UiContext): Message {
       return {
         tone: "busy",
         title: "文字起こし中",
-        detail: phase.remainingChunks > 1 ? `残り ${phase.remainingChunks} 区間` : undefined,
+        detail: phase.remainingChunks > 1 ? `残り ${phase.remainingChunks} 件` : undefined,
       };
     case "rewriting":
       return { tone: "busy", title: "文章を整えています" };
@@ -56,11 +56,11 @@ function copyTitle(reason: CopyReason): string {
     case "autoInsertOff":
       return "クリップボードにコピーしました";
     case "permissionMissing":
-      return "権限がないためコピーのみ行いました";
+      return "権限がないためクリップボードにコピーしました";
     case "secureField":
-      return "入力先がパスワード欄だったので、貼り付けていません";
+      return "パスワード入力欄のため、クリップボードにコピーしました";
     case "pasteFailed":
-      return "自動入力できなかったためコピーしました";
+      return "自動入力に失敗したため、クリップボードにコピーしました";
   }
 }
 
@@ -73,25 +73,25 @@ function micSettingsPath(platform: Platform): string {
 function failureText(failure: Failure, platform: Platform): { title: string; detail?: string } {
   switch (failure.code) {
     case "modelMissing":
-      return { title: "音声認識モデルがありません", detail: "設定画面からダウンロードしてください" };
+      return { title: "音声認識モデルが見つかりません", detail: "設定画面からダウンロードしてください" };
     case "micPermission":
-      return { title: "マイクの使用が許可されていません", detail: micSettingsPath(platform) };
+      return { title: "マイクへのアクセスが許可されていません", detail: micSettingsPath(platform) };
     case "micUnavailable":
-      return { title: "マイクを開けませんでした", detail: "入力デバイスを確認してください" };
+      return { title: "マイクにアクセスできませんでした", detail: "入力デバイスの設定を確認してください" };
     case "micStartTimedOut":
-      return { title: "マイクの起動が応答しません", detail: "もう一度押すと再試行します" };
+      return { title: "マイクの起動がタイムアウトしました", detail: "ショートカットを押して再試行してください" };
     case "micLost":
-      return { title: "録音中にマイクが切断されました" };
+      return { title: "録音中にマイクの接続が切れました" };
     case "noAudio":
       return {
-        title: `${failure.detail} から音声が届きませんでした`,
-        detail: "ミュートや入力デバイスの設定を確認してください（ノートPCは蓋を閉じると内蔵マイクが止まります）",
+        title: `${failure.detail} から音声が検出されませんでした`,
+        detail: "マイクのミュート設定や入力機器をご確認ください（クラムシェルモード等では内蔵マイクが無効になる場合があります）",
       };
     case "tooShort":
-      return { title: "録音が短くて、文字にできませんでした" };
+      return { title: "録音時間が短すぎるため、認識できませんでした" };
     case "nothingRecognized":
-      return { title: "話し声が聞き取れませんでした" };
+      return { title: "音声を認識できませんでした" };
     case "transcription":
-      return { title: "文字にする途中で止まりました", detail: "設定画面の状態を確認してください" };
+      return { title: "文字起こし処理に失敗しました", detail: "設定画面でツールの動作状況をご確認ください" };
   }
 }

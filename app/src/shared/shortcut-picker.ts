@@ -83,7 +83,7 @@ export function mountShortcutPicker(
     capturing = true;
     error.textContent = "";
     captureButton.classList.add("capturing");
-    captureButton.textContent = "キーを押してください（Esc でやめる）";
+    captureButton.textContent = "キーを入力してください（Esc でキャンセル）";
     // Free the current shortcut so pressing it here does not start a recording
     await api.suspendShortcut();
   }
@@ -141,7 +141,7 @@ export function mountShortcutPicker(
       }),
     );
     const custom = saved !== null && !presets.some((p) => same(p, saved));
-    captureButton.textContent = custom ? await api.shortcutLabel(saved) : "ほかのキー...";
+    captureButton.textContent = custom ? await api.shortcutLabel(saved) : "キーを入力して変更...";
     captureButton.setAttribute("aria-pressed", String(custom));
     container.replaceChildren(...(optional ? [off] : []), ...buttons, captureButton);
   }

@@ -325,6 +325,27 @@
   gap: 8px;
 }
 
+.troubleshoot {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding-top: 14px;
+  margin-top: 4px;
+  border-top: 1px solid var(--border);
+}
+
+.troubleshoot .text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.troubleshoot .label {
+  font-size: 14px;
+  font-weight: 600;
+}
+
 @media (max-width: 600px) {
   .add-word,
   .model-fields {
