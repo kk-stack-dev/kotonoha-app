@@ -33,6 +33,10 @@
   margin-left: 8px;
 }
 
+.wizard-head .app-version {
+  margin-left: auto;
+}
+
 .step {
   flex: 1;
   display: flex;

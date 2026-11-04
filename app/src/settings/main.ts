@@ -121,12 +121,13 @@ function renderBanners(): void {
 
 // ---------------------------------------------------------------- general
 
-const SWITCHES: [string, "autoInsert" | "keepOnClipboard" | "removeFillers" | "lineBreaks" | "llmRewrite"][] = [
+const SWITCHES: [string, "autoInsert" | "keepOnClipboard" | "removeFillers" | "lineBreaks" | "llmRewrite" | "checkUpdatesOnLaunch"][] = [
   ["auto-insert", "autoInsert"],
   ["keep-clipboard", "keepOnClipboard"],
   ["remove-fillers", "removeFillers"],
   ["line-breaks", "lineBreaks"],
   ["llm-rewrite", "llmRewrite"],
+  ["check-updates", "checkUpdatesOnLaunch"],
 ];
 
 function renderGeneral(): void {
@@ -325,6 +326,37 @@ function renderAdvanced(): void {
   el("version").textContent = ctx.version;
 }
 
+let updateAvailable = false;
+
+function showUpdateAvailable(latest: string): void {
+  updateAvailable = true;
+  el("update-result").textContent = `新しいバージョン ${latest} があります`;
+  el("update-action").textContent = "ダウンロードページを開く";
+}
+
+/** Checks for a new version only when asked; when one exists, the same button opens the release page. */
+async function onUpdateAction(): Promise<void> {
+  if (updateAvailable) {
+    await api.openReleasePage();
+    return;
+  }
+  const button = el<HTMLButtonElement>("update-action");
+  button.disabled = true;
+  el("update-result").textContent = "確認しています...";
+  try {
+    const result = await api.checkUpdate();
+    if (result.kind === "available") {
+      showUpdateAvailable(result.latest);
+    } else {
+      el("update-result").textContent = "最新のバージョンです";
+    }
+  } catch (e) {
+    el("update-result").textContent = errorText(e);
+  } finally {
+    button.disabled = false;
+  }
+}
+
 async function downloadLight(): Promise<void> {
   el("light-models").hidden = true;
   el("models-error").textContent = "";
@@ -352,6 +384,7 @@ async function refresh(): Promise<void> {
 
 async function main(): Promise<void> {
   [ctx, settings, dictionary] = await Promise.all([api.uiContext(), api.getSettings(), api.getDictionary()]);
+  el("app-version").textContent = `バージョン ${ctx.version}`;
   setUpTabs();
   el("builtin-toggle").querySelector(".chevron")!.innerHTML = icons.chevron;
 
@@ -410,6 +443,10 @@ async function main(): Promise<void> {
   el("light-download").addEventListener("click", () => void downloadLight());
   el("open-models").addEventListener("click", () => void api.openModelsFolder());
   el("open-logs").addEventListener("click", () => void api.openLogs());
+  const pending = await api.pendingUpdate();
+  if (pending) showUpdateAvailable(pending);
+  void events.onUpdateAvailable(showUpdateAvailable);
+  el("update-action").addEventListener("click", () => void onUpdateAction());
   el("redo-setup").addEventListener("click", () => void api.openSetup());
 
   // Permissions, tools and models can change outside this window; refresh when it regains focus

@@ -6,6 +6,7 @@ mod commands;
 mod logging;
 mod shortcut;
 mod tray;
+mod updates;
 mod windows;
 
 use std::sync::Arc;
@@ -40,6 +41,7 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .manage(store.clone())
         .manage(Arc::new(commands::Downloads::default()))
+        .manage(updates::PendingUpdate::default())
         .on_window_event(|window, event| {
             // The settings page frees the shortcut while recording a new one; if the window closes
             // mid-capture, put the saved shortcut back
@@ -77,6 +79,9 @@ pub fn run() {
             commands::open_logs,
             commands::get_autostart,
             commands::set_autostart,
+            commands::check_update,
+            commands::open_release_page,
+            commands::pending_update,
         ])
         .setup(move |app| {
             // A menu bar app: no Dock icon, and never activated by showing the overlay
@@ -90,6 +95,7 @@ pub fn run() {
             let label = store.settings().shortcut.label(Platform::current());
             tray::create(handle, &commands::tooltip(&label))?;
             bridge::spawn(handle.clone(), session);
+            updates::spawn_launch_check(handle.clone());
 
             let shortcut_failed = shortcut::register(handle, &store.settings().shortcut)
                 .inspect_err(|e| tracing::warn!(error = %e, "could not register the shortcut"))

@@ -18,6 +18,7 @@ export interface Settings {
   llmRewrite: boolean;
   autoInsert: boolean;
   keepOnClipboard: boolean;
+  checkUpdatesOnLaunch: boolean;
   models: { directory: string | null; whisper: string | null; llm: string | null };
   tools: { whisper: string | null; llama: string | null };
 }
@@ -131,3 +132,5 @@ export interface DownloadProgress {
 }
 
 export type DownloadSet = "setup" | "lightModels";
+
+export type UpdateStatus = { kind: "upToDate" } | { kind: "available"; latest: string };

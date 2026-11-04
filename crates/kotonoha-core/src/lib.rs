@@ -16,3 +16,4 @@ pub mod setup;
 pub mod shortcut;
 pub mod text;
 pub mod tools;
+pub mod update;

@@ -12,6 +12,7 @@ import type {
   SetupStatus,
   Shortcut,
   UiContext,
+  UpdateStatus,
 } from "./types";
 
 type MicPermission = SetupStatus["microphonePermission"];
@@ -42,6 +43,9 @@ export const api = {
   finishSetup: () => invoke<void>("finish_setup"),
   openLogs: () => invoke<void>("open_logs"),
   getAutostart: () => invoke<boolean>("get_autostart"),
+  checkUpdate: () => invoke<UpdateStatus>("check_update"),
+  pendingUpdate: () => invoke<string | null>("pending_update"),
+  openReleasePage: () => invoke<void>("open_release_page"),
   setAutostart: (enabled: boolean) => invoke<void>("set_autostart", { enabled }),
 };
 
@@ -51,6 +55,8 @@ export const events = {
   onLevel: (handler: (level: number) => void): Promise<UnlistenFn> =>
     listen<number>("session-level", (e) => handler(e.payload)),
   onSettingsChanged: (handler: () => void): Promise<UnlistenFn> => listen("settings-changed", () => handler()),
+  onUpdateAvailable: (handler: (latest: string) => void): Promise<UnlistenFn> =>
+    listen<string>("update-available", (e) => handler(e.payload)),
   onDownload: (handler: (p: DownloadProgress) => void): Promise<UnlistenFn> =>
     listen<DownloadProgress>("download-progress", (e) => handler(e.payload)),
 };

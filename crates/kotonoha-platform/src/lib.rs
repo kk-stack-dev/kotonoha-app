@@ -10,4 +10,5 @@ pub mod process;
 pub mod store;
 pub mod system;
 pub mod tools;
+pub mod update;
 pub mod whisper;

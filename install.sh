@@ -1,5 +1,6 @@
 #!/bin/sh
-# Installs or updates Kotonoha on macOS.
+# Installs or updates Kotonoha on macOS. When Kotonoha.app is already there, it is an update and the
+# messages say so.
 #
 #   curl -fsSL https://raw.githubusercontent.com/kk-stack-dev/kotonoha-app/main/install.sh | sh
 #
@@ -13,8 +14,17 @@ BASE="${KOTONOHA_BASE:-https://github.com/$REPO/releases/latest/download}"
 APP_DIR="${KOTONOHA_APP_DIR:-/Applications}"
 ZIP="Kotonoha-mac.zip"
 
+# Already installed: this run is an update, and the messages say so
+if [ -d "$APP_DIR/Kotonoha.app" ] || [ -d "$HOME/Applications/Kotonoha.app" ]; then
+  updating=1
+  what="更新"
+else
+  updating=0
+  what="インストール"
+fi
+
 fail() {
-  printf '\nインストールできませんでした: %s\n' "$1" >&2
+  printf '\n%sできませんでした: %s\n' "$what" "$1" >&2
   exit 1
 }
 
@@ -25,7 +35,11 @@ major=$(sw_vers -productVersion | cut -d. -f1)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 
-echo "Kotonoha をダウンロードしています"
+if [ "$updating" = 1 ]; then
+  echo "Kotonoha の新しい版をダウンロードしています"
+else
+  echo "Kotonoha をダウンロードしています"
+fi
 curl -fL --progress-bar -o "$tmp/$ZIP" "$BASE/$ZIP" || fail "ダウンロードに失敗しました。インターネットの接続を確かめてください"
 curl -fsSL -o "$tmp/SHA256SUMS" "$BASE/SHA256SUMS" || fail "SHA256SUMS を取得できませんでした"
 
@@ -51,6 +65,11 @@ fi
 
 rm -rf "$APP_DIR/Kotonoha.app"
 mv "$tmp/unpacked/Kotonoha.app" "$APP_DIR/"
-echo "インストールしました: $APP_DIR/Kotonoha.app"
 open "$APP_DIR/Kotonoha.app"
-echo "セットアップ画面の案内に沿って進めてください"
+if [ "$updating" = 1 ]; then
+  echo "更新しました: $APP_DIR/Kotonoha.app"
+  echo "設定とモデルはそのまま使えます。マイクやアクセシビリティの許可をもう一度求められたら、許可してください"
+else
+  echo "インストールしました: $APP_DIR/Kotonoha.app"
+  echo "セットアップ画面の案内に沿って進めてください"
+fi

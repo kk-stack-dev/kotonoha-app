@@ -2,6 +2,8 @@
 
 use kotonoha_core::session::{Phase, SessionHandle};
 use tauri::image::Image;
+use std::sync::Mutex;
+
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{TrayIcon, TrayIconBuilder};
 use tauri::{AppHandle, Manager, Runtime};
@@ -12,6 +14,7 @@ const TRAY_ID: &str = "main";
 const TOGGLE: &str = "toggle";
 const SETTINGS: &str = "settings";
 const LOGS: &str = "logs";
+const UPDATE: &str = "update";
 const QUIT: &str = "quit";
 
 const IDLE_ICON: &[u8] = include_bytes!("../icons/tray/idle.png");
@@ -21,6 +24,8 @@ const BUSY_ICON: &[u8] = include_bytes!("../icons/tray/busy.png");
 /// Kept in app state so the toggle item's label can follow the session.
 pub struct TrayMenu<R: Runtime> {
     toggle: MenuItem<R>,
+    menu: Menu<R>,
+    update: Mutex<Option<MenuItem<R>>>,
 }
 
 pub fn create<R: Runtime>(app: &AppHandle<R>, tooltip: &str) -> tauri::Result<()> {
@@ -50,12 +55,30 @@ pub fn create<R: Runtime>(app: &AppHandle<R>, tooltip: &str) -> tauri::Result<()
             }
             SETTINGS => windows::open_settings(app),
             LOGS => crate::commands::open_logs_folder(app),
+            UPDATE => crate::commands::open_release_page(app.clone()),
             QUIT => app.exit(0),
             _ => {}
         })
         .build(app)?;
-    app.manage(TrayMenu { toggle });
+    app.manage(TrayMenu { toggle, menu, update: Mutex::new(None) });
     Ok(())
+}
+
+/// Adds (or relabels) the menu item that tells a newer version exists and opens its download page.
+pub fn show_update<R: Runtime>(app: &AppHandle<R>, latest: &str) {
+    let Some(tray_menu) = app.try_state::<TrayMenu<R>>() else { return };
+    let label = format!("新しいバージョン {latest} をダウンロード");
+    let Ok(mut slot) = tray_menu.update.lock() else { return };
+    if let Some(item) = slot.as_ref() {
+        let _ = item.set_text(label);
+        return;
+    }
+    let Ok(item) = MenuItem::with_id(app, UPDATE, label, true, None::<&str>) else { return };
+    let Ok(separator) = PredefinedMenuItem::separator(app) else { return };
+    if tray_menu.menu.insert(&item, 0).is_ok() {
+        let _ = tray_menu.menu.insert(&separator, 1);
+        *slot = Some(item);
+    }
 }
 
 pub fn set_tooltip<R: Runtime>(app: &AppHandle<R>, tooltip: &str) {

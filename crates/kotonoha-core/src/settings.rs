@@ -23,6 +23,8 @@ pub struct Settings {
     pub auto_insert: bool,
     /// Leave the result on the clipboard after pasting. When off, the previous clipboard is restored.
     pub keep_on_clipboard: bool,
+    /// Look for a newer release a few seconds after launch and show a notice. Nothing is installed.
+    pub check_updates_on_launch: bool,
     pub models: ModelSettings,
     pub tools: ToolPaths,
 }
@@ -38,6 +40,7 @@ impl Settings {
             llm_rewrite: true,
             auto_insert: true,
             keep_on_clipboard: true,
+            check_updates_on_launch: true,
             models: ModelSettings::default(),
             tools: ToolPaths::default(),
         }
@@ -77,6 +80,7 @@ mod tests {
         let s: Settings = serde_json::from_str(r#"{"autoInsert": false}"#).unwrap();
         assert!(!s.auto_insert);
         assert!(s.llm_rewrite);
+        assert!(s.check_updates_on_launch);
         assert_eq!(s.max_recording_seconds, 600);
     }
 

@@ -9,6 +9,7 @@
     <header class="top">
       <div class="title-row">
         <h1>Kotonoha</h1>
+        <p class="muted small" id="app-version"></p>
         <p class="muted small">変更はすぐに反映されます</p>
       </div>
       <div class="tabs" role="tablist" aria-label="設定の項目">
@@ -74,6 +75,13 @@
           <label class="setting">
             <span class="text"><span>ログイン時に起動する</span></span>
             <input type="checkbox" role="switch" id="autostart" />
+          </label>
+          <label class="setting">
+            <span class="text">
+              <span>起動時に新しいバージョンを確認する</span>
+              <span class="small">GitHub に最新の版を問い合わせるだけです。音声や文字は送りません</span>
+            </span>
+            <input type="checkbox" role="switch" id="check-updates" />
           </label>
         </section>
       </div>
@@ -167,6 +175,9 @@
             <dd id="memory" class="wide"></dd>
             <dt>バージョン</dt>
             <dd id="version" class="wide"></dd>
+            <dt>更新</dt>
+            <dd id="update-result" class="wide" role="status"></dd>
+            <dd><button type="button" class="link" id="update-action">更新を確認</button></dd>
           </dl>
           <div class="buttons">
             <button type="button" id="open-logs">ログフォルダを開く</button>

@@ -265,6 +265,7 @@ async function refresh(): Promise<void> {
 
 async function main(): Promise<void> {
   [ctx, settings] = await Promise.all([api.uiContext(), api.getSettings()]);
+  el("app-version").textContent = `バージョン ${ctx.version}`;
   steps = ctx.platform === "macOS" ? ["download", "permissions", "try"] : ["download", "try"];
   await refresh();
 

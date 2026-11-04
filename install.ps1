@@ -1,4 +1,5 @@
-# Installs or updates Kotonoha on Windows.
+# Installs or updates Kotonoha on Windows. When Kotonoha is already installed, it is an update and the
+# messages say so.
 #
 #   irm https://raw.githubusercontent.com/kk-stack-dev/kotonoha-app/main/install.ps1 | iex
 #
@@ -13,8 +14,14 @@ $repo = 'kk-stack-dev/kotonoha-app'
 $base = if ($env:KOTONOHA_BASE) { $env:KOTONOHA_BASE } else { "https://github.com/$repo/releases/latest/download" }
 $name = 'Kotonoha-windows-x64-setup.exe'
 
+# Already installed: this run is an update, and the messages say so
+$dir = Join-Path $env:LOCALAPPDATA 'Kotonoha'
+$updating = [bool](Get-ChildItem -Path $dir -Filter '*.exe' -ErrorAction SilentlyContinue |
+  Where-Object { $_.Name -notmatch '^uninstall' } | Select-Object -First 1)
+$what = if ($updating) { '更新' } else { 'インストール' }
+
 function Fail($message) {
-  Write-Host "`nインストールできませんでした: $message" -ForegroundColor Red
+  Write-Host "`n${what}できませんでした: $message" -ForegroundColor Red
   throw $message
 }
 
@@ -23,7 +30,7 @@ if (-not [Environment]::Is64BitOperatingSystem) { Fail '64 ビット版の Windo
 $tmp = Join-Path ([IO.Path]::GetTempPath()) ("kotonoha-" + [guid]::NewGuid())
 New-Item -ItemType Directory -Path $tmp | Out-Null
 try {
-  Write-Host 'Kotonoha をダウンロードしています'
+  Write-Host $(if ($updating) { 'Kotonoha の新しい版をダウンロードしています' } else { 'Kotonoha をダウンロードしています' })
   $setup = Join-Path $tmp $name
   $sums = Join-Path $tmp 'SHA256SUMS'
   try {
@@ -38,17 +45,20 @@ try {
   if (-not $expected -or $expected -ne $actual) { Fail 'ダウンロードしたファイルが壊れています。もう一度実行してください' }
 
   Get-Process -Name 'Kotonoha' -ErrorAction SilentlyContinue | Stop-Process -Force
-  Write-Host 'インストールしています'
+  Write-Host "${what}しています"
   $process = Start-Process -FilePath $setup -ArgumentList '/S' -Wait -PassThru
   if ($process.ExitCode -ne 0) { Fail "インストーラーが終了コード $($process.ExitCode) で止まりました" }
 
-  $dir = Join-Path $env:LOCALAPPDATA 'Kotonoha'
   $exe = Get-ChildItem -Path $dir -Filter '*.exe' -ErrorAction SilentlyContinue |
     Where-Object { $_.Name -notmatch '^uninstall' } | Select-Object -First 1
-  Write-Host 'インストールしました'
+  Write-Host "${what}しました"
   if ($exe) {
     Start-Process -FilePath $exe.FullName
-    Write-Host 'セットアップ画面の案内に沿って進めてください'
+    if ($updating) {
+      Write-Host '設定とモデルはそのまま使えます'
+    } else {
+      Write-Host 'セットアップ画面の案内に沿って進めてください'
+    }
   } else {
     Write-Host 'スタートメニューから Kotonoha を起動してください'
   }

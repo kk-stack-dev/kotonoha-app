@@ -12,11 +12,12 @@ use kotonoha_core::settings::Settings;
 use kotonoha_core::setup::{self, Download, Plan, Present, Progress};
 use kotonoha_core::shortcut::{paste_label, Platform, Shortcut};
 use kotonoha_core::tools::{Target, TOOL_CATALOG};
+use kotonoha_core::update::{UpdateStatus, RELEASES_PAGE};
 use kotonoha_platform::audio::{self, MicPermission};
 use kotonoha_platform::store::ConfigStore;
 use kotonoha_platform::system::MemoryProbe;
 use kotonoha_platform::tools::{self, Tool};
-use kotonoha_platform::{download, library, output};
+use kotonoha_platform::{download, library, output, update};
 use serde::Serialize;
 use tauri::{AppHandle, Emitter, Manager, Runtime, State};
 use tauri_plugin_autostart::ManagerExt as _;
@@ -368,6 +369,33 @@ pub fn open_logs_folder<R: Runtime>(app: &AppHandle<R>) {
     let _ = std::fs::create_dir_all(&dir);
     if let Err(e) = app.opener().open_path(dir.to_string_lossy(), None::<&str>) {
         tracing::warn!(error = %e, "could not open log folder");
+    }
+}
+
+/// Checks the latest release once, on request. Never downloads or installs anything.
+#[tauri::command]
+pub async fn check_update<R: Runtime>(app: AppHandle<R>) -> Result<UpdateStatus, String> {
+    let status = tauri::async_runtime::spawn_blocking(|| update::check(env!("CARGO_PKG_VERSION")))
+        .await
+        .map_err(|e| e.to_string())?
+        .inspect_err(|e| tracing::warn!(error = %e, "update check failed"))
+        .map_err(|_| "更新を確認できませんでした。ネットワークの接続を確かめて、もう一度お試しください。".to_string())?;
+    if let UpdateStatus::Available { latest } = &status {
+        crate::updates::announce(&app, latest);
+    }
+    Ok(status)
+}
+
+/// The newer version found earlier (at launch or by a check), for pages opened afterwards.
+#[tauri::command]
+pub fn pending_update(pending: State<'_, crate::updates::PendingUpdate>) -> Option<String> {
+    pending.get()
+}
+
+#[tauri::command]
+pub fn open_release_page<R: Runtime>(app: AppHandle<R>) {
+    if let Err(e) = app.opener().open_url(RELEASES_PAGE, None::<&str>) {
+        tracing::warn!(error = %e, "could not open the release page");
     }
 }
 
