@@ -147,7 +147,7 @@
       <!-- LAN -->
       <div class="panel" role="tabpanel" id="panel-lan" aria-labelledby="tab-lan" hidden>
         <p class="muted">
-          同じ LAN にある別のコンピューターに、音声認識と文章校正を任せられます。音声と文字は、組にしたコンピューターにだけ暗号化して送ります。インターネットには送りません。
+          同じ LAN にある別のコンピューターに、音声認識と文章校正を任せられます。音声と文字は、ペアリングしたコンピューターにだけ暗号化して送ります。インターネットには送りません。
         </p>
 
         <section class="card list" aria-labelledby="remote-heading">
@@ -157,13 +157,13 @@
           </div>
           <label class="setting">
             <span class="text">
-              <span>組にしたコンピューターで処理する</span>
+              <span>ペアリングしたコンピューターで処理する</span>
               <span class="small" id="remote-note"></span>
             </span>
             <input type="checkbox" role="switch" id="use-remote" />
           </label>
           <div class="confirm" id="remote-confirm" hidden>
-            <p class="small">録音した音声と文字を、このあと組にする LAN 内のコンピューターに暗号化して送ります。インターネットには送りません。</p>
+            <p class="small">録音した音声と文字を、このあとペアリングする LAN 内のコンピューターに暗号化して送ります。インターネットには送りません。</p>
             <p class="small" id="remote-permission"></p>
             <div class="buttons">
               <button type="button" class="primary" id="remote-continue">続ける</button>
@@ -182,7 +182,7 @@
                 <strong id="paired-name"></strong>
               </div>
               <button type="button" id="check-server">接続を確認</button>
-              <button type="button" class="quiet" id="forget-server">組を解除</button>
+              <button type="button" class="quiet" id="forget-server">ペアリングを解除</button>
             </div>
             <p class="small" id="check-result" role="status"></p>
 
@@ -195,11 +195,11 @@
               <p class="muted small" id="found-note"></p>
               <button type="button" class="disclosure" id="manual-toggle" aria-expanded="false" aria-controls="manual-box">
                 <span class="chevron" aria-hidden="true"></span>
-                <span class="text"><span class="small">見つからないときは、IP アドレスで組にする</span></span>
+                <span class="text"><span class="small">見つからないときは、IP アドレスでペアリングする</span></span>
               </button>
               <form class="manual" id="manual-box" hidden>
                 <input id="manual-address" placeholder="例: 192.168.1.20" autocomplete="off" aria-label="相手の IP アドレス" />
-                <button type="submit">組にする</button>
+                <button type="submit">ペアリング</button>
                 <span class="muted small hint">相手のコンピューターの「LAN 連携」に表示されているアドレスを入力します</span>
               </form>
             </div>
@@ -224,13 +224,13 @@
           </div>
           <label class="setting">
             <span class="text">
-              <span>組にしたコンピューターの処理を受け付ける</span>
+              <span>ペアリングしたコンピューターの処理を受け付ける</span>
               <span class="small">送られてきた音声を、このコンピューターで文字にして返します</span>
             </span>
             <input type="checkbox" role="switch" id="serve" />
           </label>
           <div class="confirm" id="serve-confirm" hidden>
-            <p class="small">LAN 内のコンピューターからの接続を受け付けます。処理するのは、あなたがこの画面で許可したコンピューターの音声だけです。</p>
+            <p class="small">LAN 内のコンピューターからの接続を受け付けます。処理するのは、この画面で許可したコンピューターの音声だけです。</p>
             <p class="small" id="serve-permission"></p>
             <div class="buttons">
               <button type="button" class="primary" id="serve-continue">続ける</button>
@@ -249,9 +249,9 @@
               </div>
             </div>
             <div class="clients">
-              <span class="label">組にしたコンピューター</span>
+              <span class="label">ペアリングしたコンピューター</span>
               <ul class="found" id="client-list"></ul>
-              <p class="muted small" id="client-empty">まだありません。相手のコンピューターの「別のコンピューターで処理する」から組にします。</p>
+              <p class="muted small" id="client-empty">まだありません。相手のコンピューターの「別のコンピューターで処理する」からペアリングします。</p>
             </div>
           </div>
           <p class="error" id="serve-error" role="alert"></p>
@@ -304,7 +304,7 @@
 
         <section class="card" aria-labelledby="about-heading">
           <h2 id="about-heading">このアプリについて</h2>
-          <p class="muted small">音声認識や文章校正は、この端末か、LAN 連携で組にした同じ LAN 内のコンピューターで行います。インターネット上のサーバーへ送信されることはありません。</p>
+          <p class="muted small">音声認識や文章校正は、この端末か、LAN 連携でペアリングした同じ LAN 内のコンピューターで行います。インターネット上のサーバーへ送信されることはありません。</p>
           <dl class="facts">
             <dt>モデルの保存先</dt>
             <dd id="models-dir"></dd>

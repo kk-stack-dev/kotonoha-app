@@ -174,7 +174,7 @@ function renderGeneral(): void {
   el("llm-note").textContent =
     missing ??
     (sendsWork()
-      ? "組にしたコンピューターのAI（言語モデル）で自然な文章に整えます"
+      ? "ペアリングしたコンピューターのAI（言語モデル）で自然な文章に整えます"
       : "端末内のローカルAI（言語モデル）で自然な文章に整えます");
 }
 
@@ -341,9 +341,9 @@ function servePermissionNote(): string {
 function serveStateText(): string {
   switch (lan.problem) {
     case "publicNetwork":
-      return "パブリック ネットワークにつながっているため、受け付けを止めています。自宅や職場のネットワークでは、Windows の設定でネットワークを「プライベート」にしてください。";
+      return "パブリック ネットワークにつながっているため、受け付けを止めています。自宅や職場のネットワークでは、Windows の設定でネットワークの種類を「プライベート」にしてください。";
     case "portInUse":
-      return `ポート 50540 をほかのアプリが使っているため、受け付けられません。`;
+      return `ポート 50540 をほかのアプリが使っているため、受け付けを始められません。`;
     case "failed":
       return "受け付けを始められませんでした。ログを確認してください。";
     case null:
@@ -351,7 +351,7 @@ function serveStateText(): string {
   }
   if (!lan.serving) return "準備しています...";
   const addresses = lan.addresses.length > 0 ? `（IP アドレス: ${lan.addresses.join("、")}）` : "";
-  const ready = status.ready ? "" : " ただし、このコンピューターに音声認識のモデルがないため、まだ処理できません。";
+  const ready = status.ready ? "" : "ただし、このコンピューターに音声認識のモデルがないため、まだ処理できません。";
   return `受け付けています。このコンピューターの名前は「${lan.computerName}」です${addresses}。${ready}`;
 }
 
@@ -381,7 +381,7 @@ function renderLan(): void {
     ? "オンにすると、同じ LAN で処理を受け付けているコンピューターを探します"
     : lan.server
       ? `「${lan.server.name}」で処理します`
-      : "組にするまでは、このコンピューターで処理します";
+      : "ペアリングするまでは、このコンピューターで処理します";
   el<HTMLInputElement>("fallback-local").checked = settings.lan.fallbackToLocal;
   el("paired-server").hidden = !lan.server;
   el("paired-name").textContent = lan.server?.name ?? "";
@@ -389,7 +389,7 @@ function renderLan(): void {
   el("browse-again").toggleAttribute("disabled", browsing);
   el("found-list").replaceChildren(
     ...found.map((c) =>
-      listItem(c.name || c.addresses[0] || "", "組にする", `${c.name} と組にする`, () => pairWith(c.addresses, c.name)),
+      listItem(c.name || c.addresses[0] || "", "ペアリング", `${c.name} とペアリング`, () => pairWith(c.addresses, c.name)),
     ),
   );
 
@@ -400,12 +400,12 @@ function renderLan(): void {
   const request = lan.pairRequest;
   el("pair-request").hidden = !request;
   if (request) {
-    el("request-title").textContent = `「${request.name}」が組になることを求めています`;
+    el("request-title").textContent = `「${request.name}」がペアリングを求めています`;
     el("request-code").textContent = request.code;
   }
   el("client-list").replaceChildren(
     ...lan.clients.map((c) =>
-      listItem(c.name, "解除", `${c.name} との組を解除`, async () => {
+      listItem(c.name, "解除", `${c.name} とのペアリングを解除`, async () => {
         await lanAction(api.lanForgetClient(c.key), "serve-error");
       }),
     ),
@@ -450,7 +450,7 @@ async function browse(): Promise<void> {
     el("found-note").textContent =
       found.length > 0
         ? ""
-        : "見つかりませんでした。相手のコンピューターで「このコンピューターで処理を受け付ける」をオンにしてから、もう一度探してください。";
+        : "見つかりませんでした。相手のコンピューターで「ペアリングしたコンピューターの処理を受け付ける」をオンにしてから、もう一度探してください。";
   } catch (e) {
     el("found-note").textContent = "";
     showRemoteError(errorText(e));
@@ -471,7 +471,7 @@ async function pairWith(addresses: string[], name: string): Promise<void> {
   renderLan();
   try {
     const server = await api.lanPair(addresses);
-    el("check-result").textContent = `「${server.name}」と組にしました。これからの録音は、このコンピューターで処理します。`;
+    el("check-result").textContent = `「${server.name}」とペアリングしました。これからの録音は、「${server.name}」で処理します。`;
   } catch (e) {
     if (!isCancelled(e)) showRemoteError(errorText(e));
   } finally {
@@ -483,7 +483,7 @@ async function pairWith(addresses: string[], name: string): Promise<void> {
 
 function showPairingCode(code: string): void {
   if (!pairing) return;
-  el("pairing-title").textContent = "確認の番号";
+  el("pairing-title").textContent = "確認番号";
   el("pairing-code").textContent = code;
   el("pairing-note").textContent =
     "相手のコンピューターに同じ番号が出ていることを確かめて、相手の画面で「許可」を押してください。";

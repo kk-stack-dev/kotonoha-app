@@ -416,20 +416,20 @@ fn lan_error_text(e: &LanError) -> String {
     }
     match e {
         LanError::Connect(_) => {
-            "接続できませんでした。相手のコンピューターで「このコンピューターで処理を受け付ける」がオンになっているか確かめてください".into()
+            "接続できませんでした。相手のコンピューターで「ペアリングしたコンピューターの処理を受け付ける」がオンになっているか確かめてください".into()
         }
         LanError::TimedOut => "相手のコンピューターから応答がありませんでした".into(),
         LanError::Declined => "相手のコンピューターで許可されませんでした".into(),
         LanError::NotLan => "LAN の外のアドレスには接続できません".into(),
-        LanError::WrongPeer => "組にしたコンピューターとは別のコンピューターが応答しました".into(),
+        LanError::WrongPeer => "ペアリングしたコンピューターとは別のコンピューターが応答しました".into(),
         LanError::Refused { kind: ErrorKind::Version, .. } => {
             "相手の Kotonoha Voice とバージョンが合いません。両方を最新にしてください".into()
         }
         LanError::Refused { kind: ErrorKind::NotPaired, .. } => {
-            "相手のコンピューターで組が解除されています。組にし直してください".into()
+            "相手のコンピューターでペアリングが解除されています。ペアリングし直してください".into()
         }
         LanError::Refused { kind: ErrorKind::Failed, message } if message.contains("pairing") => {
-            "相手のコンピューターで、別の組み合わせを確認しているところです".into()
+            "相手のコンピューターで、別のペアリングを確認しているところです。終わってからやり直してください".into()
         }
         other => format!("接続に失敗しました: {other}"),
     }
