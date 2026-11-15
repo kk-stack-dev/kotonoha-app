@@ -85,6 +85,36 @@ impl SpeechRecognizer for FakeRecognizer {
     }
 }
 
+/// The paired computer: scripted replies, or unpaired.
+#[derive(Default)]
+struct FakeRemote {
+    paired: bool,
+    replies: Mutex<Vec<Result<String, EngineError>>>,
+    calls: AtomicUsize,
+}
+
+#[async_trait]
+impl RemoteEngine for FakeRemote {
+    fn is_paired(&self) -> bool {
+        self.paired
+    }
+    async fn transcribe(&self, _: &[f32], _: &str, _: &str) -> Result<String, EngineError> {
+        self.calls.fetch_add(1, Ordering::SeqCst);
+        let mut replies = self.replies.lock().unwrap();
+        if replies.is_empty() {
+            Ok(String::new())
+        } else {
+            replies.remove(0)
+        }
+    }
+    async fn complete(&self, _: &str, _: usize) -> Result<String, EngineError> {
+        Err(EngineError::Failed("not scripted".into()))
+    }
+    async fn llm_model(&self) -> Result<Option<String>, EngineError> {
+        Ok(None)
+    }
+}
+
 struct EchoLlm;
 
 #[async_trait]
@@ -141,6 +171,7 @@ struct Harness {
     handle: SessionHandle,
     mic: Arc<FakeMic>,
     recognizer: Arc<FakeRecognizer>,
+    remote: Arc<FakeRemote>,
     sink: Arc<FakeSink>,
 }
 
@@ -176,20 +207,34 @@ fn harness_with(
     sink: FakeSink,
     timing: Timing,
 ) -> Harness {
+    harness_full(script, replies, models, sink, timing, Settings::default(), FakeRemote::default())
+}
+
+fn harness_full(
+    script: MicScript,
+    replies: Vec<Result<String, EngineError>>,
+    models: Vec<ModelFile>,
+    sink: FakeSink,
+    timing: Timing,
+    settings: Settings,
+    remote: FakeRemote,
+) -> Harness {
     let mic = Arc::new(FakeMic { script, opened: AtomicUsize::new(0), stopped: Arc::default() });
     let recognizer = Arc::new(FakeRecognizer { replies: Mutex::new(replies), prompts: Mutex::default() });
     let sink = Arc::new(sink);
-    let fixed = Arc::new(Fixed { memory_mb: 8_000, models, settings: Settings::default() });
+    let remote = Arc::new(remote);
+    let fixed = Arc::new(Fixed { memory_mb: 8_000, models, settings });
     let services = Services {
         microphone: mic.clone(),
         recognizer: recognizer.clone(),
         llm: Arc::new(EchoLlm),
+        remote: remote.clone(),
         sink: sink.clone(),
         probe: fixed.clone(),
         models: fixed.clone(),
         config: fixed,
     };
-    Harness { handle: spawn(services, timing), mic, recognizer, sink }
+    Harness { handle: spawn(services, timing), mic, recognizer, remote, sink }
 }
 
 fn tone(seconds: f64) -> Vec<f32> {
@@ -377,6 +422,7 @@ async fn stops_itself_at_the_time_limit() {
             microphone: mic,
             recognizer,
             llm: Arc::new(EchoLlm),
+            remote: Arc::new(FakeRemote::default()),
             sink: sink.clone(),
             probe: fixed.clone(),
             models: fixed.clone(),
@@ -472,4 +518,84 @@ async fn a_hold_released_while_the_microphone_opens_still_stops() {
     release_tx.send(()).unwrap();
     assert_eq!(finished(&h.handle).await, Outcome::Failed { failure: Failure::TooShort });
     assert_eq!(h.mic.stopped.load(Ordering::SeqCst), 1);
+}
+
+fn remote_settings(fallback_to_local: bool) -> Settings {
+    let mut settings = Settings::default();
+    settings.lan.use_remote = true;
+    settings.lan.fallback_to_local = fallback_to_local;
+    settings
+}
+
+fn remote_harness(
+    models: Vec<ModelFile>,
+    local: Vec<Result<String, EngineError>>,
+    remote: Vec<Result<String, EngineError>>,
+    settings: Settings,
+) -> Harness {
+    let remote = FakeRemote { paired: true, replies: Mutex::new(remote), ..FakeRemote::default() };
+    harness_full(
+        MicScript::Samples(vec![tone(1.0)]),
+        local,
+        models,
+        FakeSink::default(),
+        test_timing(),
+        settings,
+        remote,
+    )
+}
+
+#[tokio::test(start_paused = true)]
+async fn paired_computer_does_the_work_even_without_a_model_here() {
+    let h = remote_harness(vec![], vec![], vec![Ok("向こうで".into())], remote_settings(true));
+    assert_eq!(record_then_stop(&h).await, Outcome::Inserted);
+    assert_eq!(h.sink.delivered.lock().unwrap().as_slice(), ["向こうで。"]);
+    assert_eq!(h.remote.calls.load(Ordering::SeqCst), 1);
+    assert!(h.recognizer.prompts.lock().unwrap().is_empty());
+}
+
+#[tokio::test(start_paused = true)]
+async fn unreachable_computer_falls_back_to_this_one() {
+    let h = remote_harness(
+        vec![whisper_file()],
+        vec![Ok("こちらで".into())],
+        vec![Err(EngineError::Unreachable("refused".into()))],
+        remote_settings(true),
+    );
+    assert_eq!(record_then_stop(&h).await, Outcome::Inserted);
+    assert_eq!(h.sink.delivered.lock().unwrap().as_slice(), ["こちらで。"]);
+}
+
+#[tokio::test(start_paused = true)]
+async fn unreachable_computer_without_fallback_is_reported() {
+    let h = remote_harness(
+        vec![whisper_file()],
+        vec![Ok("使われない".into())],
+        vec![Err(EngineError::Unreachable("refused".into()))],
+        remote_settings(false),
+    );
+    assert_eq!(record_then_stop(&h).await, Outcome::Failed { failure: Failure::ServerUnreachable });
+    assert!(h.recognizer.prompts.lock().unwrap().is_empty());
+
+    // Falling back is allowed, but there is no model here
+    let h =
+        remote_harness(vec![], vec![], vec![Err(EngineError::Unreachable("refused".into()))], remote_settings(true));
+    assert_eq!(record_then_stop(&h).await, Outcome::Failed { failure: Failure::ServerUnreachable });
+}
+
+#[tokio::test(start_paused = true)]
+async fn nothing_is_sent_until_a_computer_is_paired() {
+    let remote = FakeRemote::default();
+    let h = harness_full(
+        MicScript::Samples(vec![tone(1.0)]),
+        vec![Ok("ここで".into())],
+        vec![whisper_file()],
+        FakeSink::default(),
+        test_timing(),
+        remote_settings(false),
+        remote,
+    );
+    assert_eq!(record_then_stop(&h).await, Outcome::Inserted);
+    assert_eq!(h.remote.calls.load(Ordering::SeqCst), 0);
+    assert_eq!(h.sink.delivered.lock().unwrap().as_slice(), ["ここで。"]);
 }

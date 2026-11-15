@@ -50,4 +50,7 @@ pub enum Failure {
     /// Audio arrived but no speech was recognised.
     NothingRecognized,
     Transcription(String),
+    /// The paired computer on the LAN could not be reached, and falling back to this one is off
+    /// (or this one has no model).
+    ServerUnreachable,
 }

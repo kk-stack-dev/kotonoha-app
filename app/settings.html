@@ -15,6 +15,7 @@
       <div class="tabs" role="tablist" aria-label="設定タブ">
         <button type="button" role="tab" id="tab-general" aria-controls="panel-general" aria-selected="true">一般</button>
         <button type="button" role="tab" id="tab-dictionary" aria-controls="panel-dictionary" aria-selected="false" tabindex="-1">辞書</button>
+        <button type="button" role="tab" id="tab-lan" aria-controls="panel-lan" aria-selected="false" tabindex="-1">LAN 連携</button>
         <button type="button" role="tab" id="tab-advanced" aria-controls="panel-advanced" aria-selected="false" tabindex="-1">詳細</button>
       </div>
     </header>
@@ -143,6 +144,120 @@
         </section>
       </div>
 
+      <!-- LAN -->
+      <div class="panel" role="tabpanel" id="panel-lan" aria-labelledby="tab-lan" hidden>
+        <p class="muted">
+          同じ LAN にある別のコンピューターに、音声認識と文章校正を任せられます。音声と文字は、組にしたコンピューターにだけ暗号化して送ります。インターネットには送りません。
+        </p>
+
+        <section class="card list" aria-labelledby="remote-heading">
+          <div class="card-head">
+            <h2 id="remote-heading">別のコンピューターで処理する</h2>
+            <span class="saved" data-saved="remote"></span>
+          </div>
+          <label class="setting">
+            <span class="text">
+              <span>組にしたコンピューターで処理する</span>
+              <span class="small" id="remote-note"></span>
+            </span>
+            <input type="checkbox" role="switch" id="use-remote" />
+          </label>
+          <div class="confirm" id="remote-confirm" hidden>
+            <p class="small">録音した音声と文字を、このあと組にする LAN 内のコンピューターに暗号化して送ります。インターネットには送りません。</p>
+            <p class="small" id="remote-permission"></p>
+            <div class="buttons">
+              <button type="button" class="primary" id="remote-continue">続ける</button>
+              <button type="button" id="remote-cancel">やめる</button>
+            </div>
+          </div>
+          <div class="lan-body" id="remote-body" hidden>
+            <label class="setting nested">
+              <span class="text"><span>つながらないときは、このコンピューターで処理する</span></span>
+              <input type="checkbox" role="switch" id="fallback-local" />
+            </label>
+
+            <div class="paired" id="paired-server" hidden>
+              <div class="text">
+                <span class="muted small">処理するコンピューター</span>
+                <strong id="paired-name"></strong>
+              </div>
+              <button type="button" id="check-server">接続を確認</button>
+              <button type="button" class="quiet" id="forget-server">組を解除</button>
+            </div>
+            <p class="small" id="check-result" role="status"></p>
+
+            <div class="finder" id="finder" hidden>
+              <div class="finder-head">
+                <span class="label">同じ LAN で見つかったコンピューター</span>
+                <button type="button" class="link" id="browse-again">もう一度探す</button>
+              </div>
+              <ul class="found" id="found-list"></ul>
+              <p class="muted small" id="found-note"></p>
+              <button type="button" class="disclosure" id="manual-toggle" aria-expanded="false" aria-controls="manual-box">
+                <span class="chevron" aria-hidden="true"></span>
+                <span class="text"><span class="small">見つからないときは、IP アドレスで組にする</span></span>
+              </button>
+              <form class="manual" id="manual-box" hidden>
+                <input id="manual-address" placeholder="例: 192.168.1.20" autocomplete="off" aria-label="相手の IP アドレス" />
+                <button type="submit">組にする</button>
+                <span class="muted small hint">相手のコンピューターの「LAN 連携」に表示されているアドレスを入力します</span>
+              </form>
+            </div>
+
+            <div class="pairing" id="pairing" role="status" hidden>
+              <span class="small" id="pairing-title"></span>
+              <span class="code" id="pairing-code"></span>
+              <span class="small" id="pairing-note"></span>
+              <div class="buttons"><button type="button" id="pairing-cancel">やめる</button></div>
+            </div>
+            <p class="error" id="remote-error" role="alert"></p>
+            <div class="buttons" id="local-network-help" hidden>
+              <button type="button" class="link" id="open-local-network">システム設定を開く</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="card list" aria-labelledby="serve-heading">
+          <div class="card-head">
+            <h2 id="serve-heading">このコンピューターで処理を受け付ける</h2>
+            <span class="saved" data-saved="serve"></span>
+          </div>
+          <label class="setting">
+            <span class="text">
+              <span>組にしたコンピューターの処理を受け付ける</span>
+              <span class="small">送られてきた音声を、このコンピューターで文字にして返します</span>
+            </span>
+            <input type="checkbox" role="switch" id="serve" />
+          </label>
+          <div class="confirm" id="serve-confirm" hidden>
+            <p class="small">LAN 内のコンピューターからの接続を受け付けます。処理するのは、あなたがこの画面で許可したコンピューターの音声だけです。</p>
+            <p class="small" id="serve-permission"></p>
+            <div class="buttons">
+              <button type="button" class="primary" id="serve-continue">続ける</button>
+              <button type="button" id="serve-cancel">やめる</button>
+            </div>
+          </div>
+          <div class="lan-body" id="serve-body" hidden>
+            <p class="small" id="serve-state" role="status"></p>
+            <div class="request" id="pair-request" role="alert" hidden>
+              <span class="small" id="request-title"></span>
+              <span class="code" id="request-code"></span>
+              <span class="small">相手の画面に出ている番号と同じなら、許可してください。違う番号なら拒否してください。</span>
+              <div class="buttons">
+                <button type="button" class="primary" id="request-accept">許可</button>
+                <button type="button" id="request-decline">拒否</button>
+              </div>
+            </div>
+            <div class="clients">
+              <span class="label">組にしたコンピューター</span>
+              <ul class="found" id="client-list"></ul>
+              <p class="muted small" id="client-empty">まだありません。相手のコンピューターの「別のコンピューターで処理する」から組にします。</p>
+            </div>
+          </div>
+          <p class="error" id="serve-error" role="alert"></p>
+        </section>
+      </div>
+
       <!-- Advanced -->
       <div class="panel" role="tabpanel" id="panel-advanced" aria-labelledby="tab-advanced" hidden>
         <section class="card" aria-labelledby="models-heading">
@@ -189,7 +304,7 @@
 
         <section class="card" aria-labelledby="about-heading">
           <h2 id="about-heading">このアプリについて</h2>
-          <p class="muted small">音声認識や文章校正はすべて端末内で完結し、外部サーバーへ送信されることはありません。</p>
+          <p class="muted small">音声認識や文章校正は、この端末か、LAN 連携で組にした同じ LAN 内のコンピューターで行います。インターネット上のサーバーへ送信されることはありません。</p>
           <dl class="facts">
             <dt>モデルの保存先</dt>
             <dd id="models-dir"></dd>

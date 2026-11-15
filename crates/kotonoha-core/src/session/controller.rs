@@ -1,5 +1,6 @@
 use std::future::Future;
 use std::path::PathBuf;
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
 use std::time::Duration;
 
@@ -9,11 +10,12 @@ use tokio::time::{self, Instant, MissedTickBehavior};
 use super::phase::{Failure, Outcome, Phase};
 use crate::audio::{self, Chunk, ChunkPlan, Chunker, Recording};
 use crate::dictionary::DEFAULT_PROMPT_BUDGET;
+use crate::lan::{RemoteLlm, RoutedRecognizer};
 use crate::models::{self, MemoryMode};
 use crate::pipeline::{self, LlmPlan, PipelineOptions, SkipReason};
 use crate::ports::{
-    AudioEvent, ConfigSource, Delivery, DeliveryOptions, LanguageModel, MicError, MicStream, Microphone, ModelLibrary,
-    SpeechRecognizer, SystemProbe, TextSink, TranscriptionRequest,
+    AudioEvent, ConfigSource, Delivery, DeliveryOptions, EngineError, LanguageModel, MicError, MicStream, Microphone,
+    ModelLibrary, RemoteEngine, SpeechRecognizer, SystemProbe, TextSink, TranscriptionRequest,
 };
 use crate::text::transcript;
 
@@ -23,6 +25,8 @@ pub struct Services {
     pub microphone: Arc<dyn Microphone>,
     pub recognizer: Arc<dyn SpeechRecognizer>,
     pub llm: Arc<dyn LanguageModel>,
+    /// The paired computer on the LAN, used when the settings say so.
+    pub remote: Arc<dyn RemoteEngine>,
     pub sink: Arc<dyn TextSink>,
     pub probe: Arc<dyn SystemProbe>,
     pub models: Arc<dyn ModelLibrary>,
@@ -130,7 +134,7 @@ enum StopReason {
 struct ChunkResult {
     index: usize,
     text: String,
-    error: Option<String>,
+    error: Option<EngineError>,
 }
 
 impl Controller {
@@ -173,12 +177,28 @@ impl Controller {
         let mode = MemoryMode::from_available_mb(self.services.probe.available_memory_mb());
         let library = self.services.models.models();
 
-        let Some(whisper_model) =
-            settings.models.whisper.clone().or_else(|| models::choose_whisper(&library, mode).map(|m| m.path.clone()))
-        else {
-            return Some(failed(Failure::ModelMissing));
+        let local_whisper =
+            settings.models.whisper.clone().or_else(|| models::choose_whisper(&library, mode).map(|m| m.path.clone()));
+        // Work goes to the paired computer when that is turned on and one is paired; until then, here
+        let remote = settings.lan.use_remote && self.services.remote.is_paired();
+        let unreachable = Arc::new(AtomicBool::new(false));
+        let (recognizer, whisper_model): (Arc<dyn SpeechRecognizer>, PathBuf) = if remote {
+            let local = settings
+                .lan
+                .fallback_to_local
+                .then(|| local_whisper.clone().map(|model| (self.services.recognizer.clone(), model)))
+                .flatten();
+            tracing::info!(?mode, fallback = local.is_some(), "session starting on the paired computer");
+            let routed =
+                RoutedRecognizer { remote: self.services.remote.clone(), local, unreachable: unreachable.clone() };
+            (Arc::new(routed), PathBuf::new())
+        } else {
+            let Some(model) = local_whisper.clone() else {
+                return Some(failed(Failure::ModelMissing));
+            };
+            tracing::info!(?mode, model = %file_name(&model), "session starting");
+            (self.services.recognizer.clone(), model)
         };
-        tracing::info!(?mode, model = %file_name(&whisper_model), "session starting");
 
         let (audio_tx, mut audio) = mpsc::unbounded_channel();
         let (stream, mut device, released) = match self.open_microphone(audio_tx, held).await {
@@ -190,7 +210,7 @@ impl Controller {
         let (chunk_tx, chunk_rx) = mpsc::unbounded_channel();
         let (result_tx, mut result_rx) = mpsc::unbounded_channel();
         let worker = tokio::spawn(transcribe_chunks(
-            self.services.recognizer.clone(),
+            recognizer,
             chunk_rx,
             result_tx,
             whisper_model,
@@ -295,7 +315,10 @@ impl Controller {
         let texts: Vec<String> = results.iter().map(|r| r.text.clone()).collect();
         if texts.iter().all(|t| t.trim().is_empty()) {
             let failure = if let Some(error) = results.iter().find_map(|r| r.error.clone()) {
-                Failure::Transcription(error)
+                match error {
+                    EngineError::Unreachable(_) => Failure::ServerUnreachable,
+                    error => Failure::Transcription(error.to_string()),
+                }
             } else if let StopReason::Lost(reason) = stop {
                 Failure::MicLost(reason)
             } else if recording.is_empty() && recorded >= self.timing.min_silent_recording {
@@ -312,8 +335,31 @@ impl Controller {
         }
 
         self.phase.send_replace(Phase::Rewriting);
+        let remote_llm = RemoteLlm(self.services.remote.clone());
+        // On the paired computer, its own model is used; the file name only picks the prompt format
+        let remote_model = if remote && settings.llm_rewrite && !unreachable.load(Ordering::SeqCst) {
+            match ignore_commands(&mut self.commands, self.services.remote.llm_model()).await {
+                Ok(Some(name)) => Some(Ok(PathBuf::from(name))),
+                Ok(None) => Some(Err(SkipReason::NoModel)),
+                Err(EngineError::Unreachable(reason)) => {
+                    tracing::warn!(%reason, "paired computer unreachable before clean-up");
+                    unreachable.store(true, Ordering::SeqCst);
+                    None
+                }
+                Err(e) => {
+                    tracing::warn!(error = %e, "could not ask the paired computer for its model");
+                    Some(Err(SkipReason::NoModel))
+                }
+            }
+        } else {
+            None
+        };
         let llm_model = if !settings.llm_rewrite {
             Err(SkipReason::Disabled)
+        } else if let Some(model) = &remote_model {
+            model.clone()
+        } else if remote && !settings.lan.fallback_to_local {
+            Err(SkipReason::Unreachable)
         } else if mode == MemoryMode::Critical {
             Err(SkipReason::LowMemory)
         } else {
@@ -325,6 +371,7 @@ impl Controller {
                 .ok_or(SkipReason::NoModel)
         };
         let plan = match &llm_model {
+            Ok(model) if remote_model.is_some() => LlmPlan::Use { llm: &remote_llm, model },
             Ok(model) => LlmPlan::Use { llm: self.services.llm.as_ref(), model },
             Err(reason) => LlmPlan::Skip(*reason),
         };
@@ -449,7 +496,7 @@ async fn transcribe_chunks(
                 }
                 Err(e) => {
                     tracing::error!(index = chunk.index, error = %e, "chunk transcription failed");
-                    ChunkResult { index: chunk.index, text: String::new(), error: Some(e.to_string()) }
+                    ChunkResult { index: chunk.index, text: String::new(), error: Some(e) }
                 }
             }
         };

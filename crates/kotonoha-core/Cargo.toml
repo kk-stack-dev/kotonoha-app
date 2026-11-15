@@ -9,6 +9,7 @@ license.workspace = true
 [dependencies]
 async-trait.workspace = true
 regex = "1"
+sha2 = "0.11"
 serde.workspace = true
 serde_json.workspace = true
 thiserror.workspace = true

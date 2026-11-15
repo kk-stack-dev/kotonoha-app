@@ -23,6 +23,9 @@ pub enum EngineError {
     TimedOut,
     #[error("{0}")]
     Failed(String),
+    /// The paired computer on the LAN could not be reached (as opposed to failing at the work).
+    #[error("the paired computer could not be reached: {0}")]
+    Unreachable(String),
 }
 
 pub struct TranscriptionRequest<'a> {
@@ -50,6 +53,19 @@ pub struct CompletionRequest<'a> {
 pub trait LanguageModel: Send + Sync {
     /// Raw completion text for a fully formatted prompt (deterministic, temperature 0).
     async fn complete(&self, request: CompletionRequest<'_>) -> Result<String, EngineError>;
+}
+
+/// A paired computer on the LAN that does the speech recognition and clean-up.
+#[async_trait]
+pub trait RemoteEngine: Send + Sync {
+    /// A computer is paired, so sessions can send work to it.
+    fn is_paired(&self) -> bool;
+    /// 16 kHz mono samples; the other computer picks its own model.
+    async fn transcribe(&self, samples: &[f32], language: &str, prompt: &str) -> Result<String, EngineError>;
+    async fn complete(&self, prompt: &str, max_tokens: usize) -> Result<String, EngineError>;
+    /// File name of the language model on the other computer (it decides the prompt format), or `None`
+    /// when it has none.
+    async fn llm_model(&self) -> Result<Option<String>, EngineError>;
 }
 
 /// What a running microphone stream reports.

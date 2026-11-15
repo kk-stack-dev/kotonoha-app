@@ -44,4 +44,14 @@ impl AppDirs {
     pub fn dictionary_file(&self) -> PathBuf {
         self.config.join("dictionary.json")
     }
+
+    /// This computer's private key for LAN connections. Created when a LAN feature is first turned on.
+    pub fn lan_key_file(&self) -> PathBuf {
+        self.config.join("lan-key")
+    }
+
+    /// Computers paired over the LAN.
+    pub fn lan_peers_file(&self) -> PathBuf {
+        self.config.join("lan-peers.json")
+    }
 }

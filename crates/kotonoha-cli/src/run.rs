@@ -14,6 +14,7 @@ use kotonoha_core::ports::{
 use kotonoha_core::session::{self, Outcome, Phase, Services, Timing};
 use kotonoha_core::settings::Settings;
 use kotonoha_platform::audio::{mixdown, CpalMicrophone, To16k};
+use kotonoha_platform::lan::{IdentitySource, LanClient, PeerStore};
 use kotonoha_platform::library::ModelDirectory;
 use kotonoha_platform::llama::LlamaCli;
 use kotonoha_platform::store::ConfigStore;
@@ -45,10 +46,17 @@ async fn run_session(
 ) -> Outcome {
     let settings = store.settings();
     let models_store = store.clone();
+    // Uses the paired computer when the settings say so, as the app does
+    let dirs = store.dirs();
+    let remote = LanClient::new(
+        Arc::new(IdentitySource::new(dirs.lan_key_file())),
+        Arc::new(PeerStore::open(dirs.lan_peers_file())),
+    );
     let services = Services {
         microphone,
         recognizer: Arc::new(WhisperCli::new(settings.tools.whisper.clone(), Some(store.dirs().tools_dir()))),
         llm: Arc::new(LlamaCli::new(settings.tools.llama.clone(), Some(store.dirs().tools_dir()))),
+        remote: Arc::new(remote),
         sink: Arc::new(PrintSink),
         probe: Arc::new(MemoryProbe::default()),
         models: Arc::new(ModelDirectory::new(move || models_store.models_dir())),

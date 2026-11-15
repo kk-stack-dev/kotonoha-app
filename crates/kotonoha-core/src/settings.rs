@@ -30,6 +30,7 @@ pub struct Settings {
     pub check_updates_on_launch: bool,
     pub models: ModelSettings,
     pub tools: ToolPaths,
+    pub lan: LanSettings,
 }
 
 impl Settings {
@@ -47,6 +48,7 @@ impl Settings {
             check_updates_on_launch: true,
             models: ModelSettings::default(),
             tools: ToolPaths::default(),
+            lan: LanSettings::default(),
         }
     }
 }
@@ -89,6 +91,25 @@ pub struct ToolPaths {
     pub llama: Option<PathBuf>,
 }
 
+/// Processing on another computer in the same LAN. Both roles are off until the person turns them on,
+/// and nothing touches the network before that. Paired computers are kept apart from these settings.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default, rename_all = "camelCase")]
+pub struct LanSettings {
+    /// Send recordings to the paired computer for speech recognition and clean-up.
+    pub use_remote: bool,
+    /// When the paired computer cannot be reached, process on this computer instead of failing.
+    pub fallback_to_local: bool,
+    /// Accept work from paired computers on this LAN.
+    pub serve: bool,
+}
+
+impl Default for LanSettings {
+    fn default() -> Self {
+        Self { use_remote: false, fallback_to_local: true, serve: false }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -100,6 +121,7 @@ mod tests {
         assert!(s.llm_rewrite);
         assert!(s.check_updates_on_launch);
         assert_eq!(s.max_recording_seconds, 600);
+        assert_eq!(s.lan, LanSettings { use_remote: false, fallback_to_local: true, serve: false });
     }
 
     #[test]

@@ -5,22 +5,32 @@ import "../shared/base.css";
 import "../shared/ui.css";
 import "./settings.css";
 
-import { api, errorText, events } from "../shared/api";
+import { api, errorText, events, isCancelled } from "../shared/api";
 import { runDownload } from "../shared/download";
 import { fileName, formatBytes, formatMemory, modelLabel } from "../shared/format";
 import { icons } from "../shared/icons";
 import { mountShortcutPicker } from "../shared/shortcut-picker";
-import type { Dictionary, DictionaryEntry, ModelKind, Settings, SetupStatus, UiContext } from "../shared/types";
+import type {
+  Dictionary,
+  DictionaryEntry,
+  FoundComputer,
+  LanStatus,
+  ModelKind,
+  Settings,
+  SetupStatus,
+  UiContext,
+} from "../shared/types";
 
 const el = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
 
 let ctx: UiContext;
 let settings: Settings;
 let status: SetupStatus;
+let lan: LanStatus;
 
 // ---------------------------------------------------------------- tabs
 
-const TABS = ["general", "dictionary", "advanced"] as const;
+const TABS = ["general", "dictionary", "lan", "advanced"] as const;
 
 function selectTab(name: (typeof TABS)[number], focus = false): void {
   for (const tab of TABS) {
@@ -100,7 +110,7 @@ function banner(title: string, note: string, action: string, run: () => unknown)
 /** Problems that stop dictation, and only those; nothing shows when all is well. */
 function renderBanners(): void {
   const list: HTMLElement[] = [];
-  if (!status.ready) {
+  if (!status.ready && !sendsWork()) {
     list.push(banner("初期セットアップが未完了です", "音声認識に必要なモデルファイルが見つかりません。", "セットアップを開く", api.openSetup));
   }
   if (status.microphonePermission === "denied") {
@@ -148,8 +158,9 @@ function renderGeneral(): void {
 
   // Clean-up needs llama.cpp and a model; say which is missing instead of a switch that does nothing
   const llm = el<HTMLInputElement>("llm-rewrite");
-  const missing =
-    status.memoryMode === "critical"
+  const missing = sendsWork()
+    ? null
+    : status.memoryMode === "critical"
       ? "空きメモリが不足しているため、現在は利用できません"
       : !status.llamaTool
         ? "llama.cpp がインストールされていないため利用できません"
@@ -160,7 +171,11 @@ function renderGeneral(): void {
   if (missing) llm.checked = false;
   el("llm-row").classList.toggle("off", missing !== null);
   el("llm-row").classList.toggle("disabled", missing !== null);
-  el("llm-note").textContent = missing ?? "端末内のローカルAI（言語モデル）で自然な文章に整えます";
+  el("llm-note").textContent =
+    missing ??
+    (sendsWork()
+      ? "組にしたコンピューターのAI（言語モデル）で自然な文章に整えます"
+      : "端末内のローカルAI（言語モデル）で自然な文章に整えます");
 }
 
 // ---------------------------------------------------------------- dictionary
@@ -304,6 +319,278 @@ async function undoRemove(): Promise<void> {
   await dictionaryChange(api.addWord(entry.word, entry.variants.join("、")));
 }
 
+// ---------------------------------------------------------------- LAN
+
+/** Work goes to a paired computer. */
+function sendsWork(): boolean {
+  return settings.lan.useRemote && lan?.server != null;
+}
+
+function remotePermissionNote(): string {
+  return ctx.platform === "macOS"
+    ? "続けると、macOS が「ローカルネットワーク上のデバイスの検出」の許可を求めます。「許可」を選んでください。"
+    : "Windows のファイアウォールが許可を求めた場合は、「プライベート ネットワーク」だけを許可してください。";
+}
+
+function servePermissionNote(): string {
+  return ctx.platform === "macOS"
+    ? "続けると、macOS がローカルネットワークへのアクセスの許可を求めます。「許可」を選んでください。"
+    : "続けると、Windows のファイアウォールが許可を求めます。「プライベート ネットワーク」だけを許可してください。パブリック ネットワークにつながっている間は受け付けません。";
+}
+
+function serveStateText(): string {
+  switch (lan.problem) {
+    case "publicNetwork":
+      return "パブリック ネットワークにつながっているため、受け付けを止めています。自宅や職場のネットワークでは、Windows の設定でネットワークを「プライベート」にしてください。";
+    case "portInUse":
+      return `ポート 50540 をほかのアプリが使っているため、受け付けられません。`;
+    case "failed":
+      return "受け付けを始められませんでした。ログを確認してください。";
+    case null:
+      break;
+  }
+  if (!lan.serving) return "準備しています...";
+  const addresses = lan.addresses.length > 0 ? `（IP アドレス: ${lan.addresses.join("、")}）` : "";
+  const ready = status.ready ? "" : " ただし、このコンピューターに音声認識のモデルがないため、まだ処理できません。";
+  return `受け付けています。このコンピューターの名前は「${lan.computerName}」です${addresses}。${ready}`;
+}
+
+let pairing = false;
+let browsing = false;
+let found: FoundComputer[] = [];
+
+function listItem(name: string, action: string, label: string, run: () => unknown): HTMLLIElement {
+  const li = document.createElement("li");
+  const text = document.createElement("span");
+  text.className = "name";
+  text.textContent = name;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.textContent = action;
+  button.setAttribute("aria-label", label);
+  button.addEventListener("click", () => void run());
+  li.append(text, button);
+  return li;
+}
+
+function renderLan(): void {
+  const remoteOn = settings.lan.useRemote;
+  if (el("remote-confirm").hidden) el<HTMLInputElement>("use-remote").checked = remoteOn;
+  el("remote-body").hidden = !remoteOn;
+  el("remote-note").textContent = !remoteOn
+    ? "オンにすると、同じ LAN で処理を受け付けているコンピューターを探します"
+    : lan.server
+      ? `「${lan.server.name}」で処理します`
+      : "組にするまでは、このコンピューターで処理します";
+  el<HTMLInputElement>("fallback-local").checked = settings.lan.fallbackToLocal;
+  el("paired-server").hidden = !lan.server;
+  el("paired-name").textContent = lan.server?.name ?? "";
+  el("finder").hidden = !!lan.server || pairing;
+  el("browse-again").toggleAttribute("disabled", browsing);
+  el("found-list").replaceChildren(
+    ...found.map((c) =>
+      listItem(c.name || c.addresses[0] || "", "組にする", `${c.name} と組にする`, () => pairWith(c.addresses, c.name)),
+    ),
+  );
+
+  const serveOn = settings.lan.serve;
+  if (el("serve-confirm").hidden) el<HTMLInputElement>("serve").checked = serveOn;
+  el("serve-body").hidden = !serveOn;
+  el("serve-state").textContent = serveOn ? serveStateText() : "";
+  const request = lan.pairRequest;
+  el("pair-request").hidden = !request;
+  if (request) {
+    el("request-title").textContent = `「${request.name}」が組になることを求めています`;
+    el("request-code").textContent = request.code;
+  }
+  el("client-list").replaceChildren(
+    ...lan.clients.map((c) =>
+      listItem(c.name, "解除", `${c.name} との組を解除`, async () => {
+        await lanAction(api.lanForgetClient(c.key), "serve-error");
+      }),
+    ),
+  );
+  el("client-empty").hidden = lan.clients.length > 0;
+}
+
+async function refreshLan(): Promise<void> {
+  lan = await api.lanStatus();
+  renderLan();
+  renderGeneral();
+  renderBanners();
+}
+
+async function lanAction(request: Promise<unknown>, errorId: string): Promise<boolean> {
+  try {
+    await request;
+    el(errorId).textContent = "";
+    await refreshLan();
+    return true;
+  } catch (e) {
+    el(errorId).textContent = errorText(e);
+    return false;
+  }
+}
+
+/** Shows the remote error, with a way to the permission when macOS may have refused it. */
+function showRemoteError(message: string): void {
+  el("remote-error").textContent = message;
+  el("local-network-help").hidden = !(ctx.platform === "macOS" && message.includes("ローカルネットワーク"));
+}
+
+async function browse(): Promise<void> {
+  if (browsing) return;
+  browsing = true;
+  found = [];
+  showRemoteError("");
+  el("found-note").textContent = "探しています...";
+  renderLan();
+  try {
+    found = await api.lanBrowse();
+    el("found-note").textContent =
+      found.length > 0
+        ? ""
+        : "見つかりませんでした。相手のコンピューターで「このコンピューターで処理を受け付ける」をオンにしてから、もう一度探してください。";
+  } catch (e) {
+    el("found-note").textContent = "";
+    showRemoteError(errorText(e));
+  } finally {
+    browsing = false;
+    renderLan();
+  }
+}
+
+async function pairWith(addresses: string[], name: string): Promise<void> {
+  pairing = true;
+  showRemoteError("");
+  el("check-result").textContent = "";
+  el("pairing").hidden = false;
+  el("pairing-title").textContent = name ? `「${name}」に接続しています` : "接続しています";
+  el("pairing-code").textContent = "";
+  el("pairing-note").textContent = "";
+  renderLan();
+  try {
+    const server = await api.lanPair(addresses);
+    el("check-result").textContent = `「${server.name}」と組にしました。これからの録音は、このコンピューターで処理します。`;
+  } catch (e) {
+    if (!isCancelled(e)) showRemoteError(errorText(e));
+  } finally {
+    pairing = false;
+    el("pairing").hidden = true;
+    await refreshLan();
+  }
+}
+
+function showPairingCode(code: string): void {
+  if (!pairing) return;
+  el("pairing-title").textContent = "確認の番号";
+  el("pairing-code").textContent = code;
+  el("pairing-note").textContent =
+    "相手のコンピューターに同じ番号が出ていることを確かめて、相手の画面で「許可」を押してください。";
+}
+
+async function checkServer(): Promise<void> {
+  const button = el<HTMLButtonElement>("check-server");
+  button.disabled = true;
+  showRemoteError("");
+  el("check-result").textContent = "接続しています...";
+  try {
+    el("check-result").textContent = await api.lanCheck();
+  } catch (e) {
+    el("check-result").textContent = "";
+    showRemoteError(errorText(e));
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function setRemote(on: boolean): Promise<void> {
+  el("remote-confirm").hidden = true;
+  if (!(await save({ lan: { ...settings.lan, useRemote: on } }, "remote", "remote-error"))) return;
+  if (!on) {
+    found = [];
+    if (pairing) await api.lanPairCancel();
+  }
+  await refreshLan();
+  if (on && !lan.server) await browse();
+}
+
+async function setServing(on: boolean): Promise<void> {
+  el("serve-confirm").hidden = true;
+  try {
+    lan = await api.lanSetServing(on);
+    settings = await api.getSettings();
+    el("serve-error").textContent = "";
+    showSaved("serve");
+  } catch (e) {
+    el("serve-error").textContent = errorText(e);
+  }
+  renderLan();
+}
+
+function setUpLan(): void {
+  el("remote-permission").textContent = remotePermissionNote();
+  el("serve-permission").textContent = servePermissionNote();
+  el("manual-toggle").querySelector(".chevron")!.innerHTML = icons.chevron;
+
+  // Turning a role on first explains what happens; the OS asks for its permission only after "続ける"
+  const remote = el<HTMLInputElement>("use-remote");
+  remote.addEventListener("change", () => {
+    if (remote.checked) {
+      remote.checked = false;
+      el("remote-confirm").hidden = false;
+      el<HTMLButtonElement>("remote-continue").focus();
+    } else {
+      void setRemote(false);
+    }
+  });
+  el("remote-continue").addEventListener("click", () => void setRemote(true));
+  el("remote-cancel").addEventListener("click", () => (el("remote-confirm").hidden = true));
+
+  const serve = el<HTMLInputElement>("serve");
+  serve.addEventListener("change", () => {
+    if (serve.checked) {
+      serve.checked = false;
+      el("serve-confirm").hidden = false;
+      el<HTMLButtonElement>("serve-continue").focus();
+    } else {
+      void setServing(false);
+    }
+  });
+  el("serve-continue").addEventListener("click", () => void setServing(true));
+  el("serve-cancel").addEventListener("click", () => (el("serve-confirm").hidden = true));
+
+  const fallback = el<HTMLInputElement>("fallback-local");
+  fallback.addEventListener("change", async () => {
+    if (!(await save({ lan: { ...settings.lan, fallbackToLocal: fallback.checked } }, "remote", "remote-error"))) {
+      fallback.checked = !fallback.checked;
+    }
+  });
+
+  el("browse-again").addEventListener("click", () => void browse());
+  const manualToggle = el("manual-toggle");
+  manualToggle.addEventListener("click", () => {
+    const open = manualToggle.getAttribute("aria-expanded") !== "true";
+    manualToggle.setAttribute("aria-expanded", String(open));
+    el("manual-box").hidden = !open;
+    if (open) el<HTMLInputElement>("manual-address").focus();
+  });
+  el<HTMLFormElement>("manual-box").addEventListener("submit", (e) => {
+    e.preventDefault();
+    const address = el<HTMLInputElement>("manual-address").value.trim();
+    if (address) void pairWith([address], "");
+  });
+  el("pairing-cancel").addEventListener("click", () => void api.lanPairCancel());
+  el("check-server").addEventListener("click", () => void checkServer());
+  el("forget-server").addEventListener("click", async () => {
+    el("check-result").textContent = "";
+    if (await lanAction(api.lanForgetServer(), "remote-error")) await browse();
+  });
+  el("open-local-network").addEventListener("click", () => void api.openLocalNetworkSettings());
+  el("request-accept").addEventListener("click", () => void lanAction(api.lanPairAnswer(true), "serve-error"));
+  el("request-decline").addEventListener("click", () => void lanAction(api.lanPairAnswer(false), "serve-error"));
+}
+
 // ---------------------------------------------------------------- advanced
 
 function fillModelSelect(select: HTMLSelectElement, kind: ModelKind, chosen: string | null): void {
@@ -415,9 +702,17 @@ async function refresh(): Promise<void> {
 }
 
 async function main(): Promise<void> {
-  [ctx, settings, dictionary] = await Promise.all([api.uiContext(), api.getSettings(), api.getDictionary()]);
+  [ctx, settings, dictionary, lan] = await Promise.all([
+    api.uiContext(),
+    api.getSettings(),
+    api.getDictionary(),
+    api.lanStatus(),
+  ]);
   el("app-version").textContent = `バージョン ${ctx.version}`;
   setUpTabs();
+  setUpLan();
+  // Opened for a pairing request: show it right away
+  if (lan.pairRequest) selectTab("lan");
   el("builtin-toggle").querySelector(".chevron")!.innerHTML = icons.chevron;
 
   const picker = mountShortcutPicker(
@@ -502,13 +797,22 @@ async function main(): Promise<void> {
 
   // Permissions, tools and models can change outside this window; refresh when it regains focus
   window.addEventListener("focus", () => void refresh());
+  await events.onLanChanged(() => void refreshLan());
+  await events.onLanPairCode(showPairingCode);
+  await events.onLanPairRequest((request) => {
+    lan = { ...lan, pairRequest: request };
+    renderLan();
+    if (request) selectTab("lan");
+  });
   await events.onSettingsChanged(async () => {
     settings = await api.getSettings();
-    await Promise.all([refresh(), picker.render(), holdPicker.render()]);
+    await Promise.all([refresh(), refreshLan(), picker.render(), holdPicker.render()]);
   });
 
   renderDictionary();
   await Promise.all([refresh(), picker.render(), holdPicker.render()]);
+  renderLan();
+  if (settings.lan.useRemote && !lan.server) void browse();
 }
 
 void main();

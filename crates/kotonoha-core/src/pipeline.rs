@@ -24,6 +24,8 @@ pub enum SkipReason {
     Disabled,
     LowMemory,
     NoModel,
+    /// The paired computer could not be reached, and falling back to this one is off.
+    Unreachable,
 }
 
 #[derive(Debug, Clone, PartialEq)]

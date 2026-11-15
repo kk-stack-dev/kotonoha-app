@@ -24,6 +24,51 @@ export interface Settings {
   checkUpdatesOnLaunch: boolean;
   models: { directory: string | null; whisper: string | null; llm: string | null };
   tools: { whisper: string | null; llama: string | null };
+  lan: LanSettings;
+}
+
+export interface LanSettings {
+  /** Send recordings to the paired computer. */
+  useRemote: boolean;
+  /** Process here when the paired computer cannot be reached. */
+  fallbackToLocal: boolean;
+  /** Accept work from paired computers. */
+  serve: boolean;
+}
+
+export interface PairedServer {
+  key: string;
+  id: string;
+  name: string;
+  address: string | null;
+}
+
+export interface PairedClient {
+  key: string;
+  name: string;
+}
+
+export interface FoundComputer {
+  id: string;
+  name: string;
+  addresses: string[];
+}
+
+export interface PairPrompt {
+  name: string;
+  code: string;
+}
+
+export type ServeProblem = "publicNetwork" | "portInUse" | "failed";
+
+export interface LanStatus {
+  computerName: string;
+  addresses: string[];
+  serving: boolean;
+  problem: ServeProblem | null;
+  server: PairedServer | null;
+  clients: PairedClient[];
+  pairRequest: PairPrompt | null;
 }
 
 export interface DictionaryEntry {
@@ -49,7 +94,8 @@ export type Failure =
   | { code: "noAudio"; detail: string }
   | { code: "tooShort" }
   | { code: "nothingRecognized" }
-  | { code: "transcription"; detail: string };
+  | { code: "transcription"; detail: string }
+  | { code: "serverUnreachable" };
 
 export type Outcome =
   | { kind: "inserted" }

@@ -3,6 +3,7 @@
 
 mod bridge;
 mod commands;
+mod lan;
 mod logging;
 mod shortcut;
 mod tray;
@@ -32,6 +33,7 @@ pub fn run() {
     let _log_guard = logging::init(&dirs.logs);
     tracing::info!(version = env!("CARGO_PKG_VERSION"), "Kotonoha Voice starting");
     let store = Arc::new(ConfigStore::open(dirs));
+    let lan = Arc::new(lan::Lan::new(store.clone()));
 
     let app = tauri::Builder::default()
         // Must be the first plugin: a second launch just opens the settings of the running one
@@ -40,6 +42,7 @@ pub fn run() {
         .plugin(tauri_plugin_autostart::init(MacosLauncher::LaunchAgent, None))
         .plugin(tauri_plugin_opener::init())
         .manage(store.clone())
+        .manage(lan.clone())
         .manage(Arc::new(commands::Downloads::default()))
         .manage(updates::PendingUpdate::default())
         .on_window_event(|window, event| {
@@ -83,6 +86,16 @@ pub fn run() {
             commands::open_release_page,
             commands::pending_update,
             commands::start_update,
+            lan::lan_status,
+            lan::lan_set_serving,
+            lan::lan_browse,
+            lan::lan_pair,
+            lan::lan_pair_cancel,
+            lan::lan_pair_answer,
+            lan::lan_forget_server,
+            lan::lan_forget_client,
+            lan::lan_check,
+            lan::open_local_network_settings,
         ])
         .setup(move |app| {
             // A menu bar app: no Dock icon, and never activated by showing the overlay
@@ -90,18 +103,20 @@ pub fn run() {
             app.set_activation_policy(tauri::ActivationPolicy::Accessory);
 
             let handle = app.handle();
-            let session = start_session(store.clone());
+            let session = start_session(store.clone(), &lan);
             app.manage(session.clone());
             windows::create_overlay(handle)?;
             let label = store.settings().shortcut.label(Platform::current());
             tray::create(handle, &commands::tooltip(&label))?;
             bridge::spawn(handle.clone(), session);
             updates::spawn_launch_check(handle.clone());
+            // Accepts work again if that was on; nothing touches the network otherwise
+            lan::spawn(handle.clone(), lan.clone());
 
             let shortcut_failed = shortcut::register(handle, &store.settings())
                 .inspect_err(|e| tracing::warn!(error = %e, "could not register the shortcut"))
                 .is_err();
-            if !can_dictate(&store) {
+            if !can_dictate(&store) && !lan.sends_work() {
                 // Setup asks for the microphone itself, at the step that explains why
                 windows::open_setup(handle);
             } else {
@@ -130,7 +145,7 @@ pub fn run() {
     });
 }
 
-fn start_session(store: Arc<ConfigStore>) -> SessionHandle {
+fn start_session(store: Arc<ConfigStore>, lan: &lan::Lan) -> SessionHandle {
     let settings = store.settings();
     // whisper.cpp and llama.cpp builds downloaded during setup
     let own_tools = Some(store.dirs().tools_dir());
@@ -139,6 +154,7 @@ fn start_session(store: Arc<ConfigStore>) -> SessionHandle {
         microphone: Arc::new(CpalMicrophone),
         recognizer: Arc::new(WhisperCli::new(settings.tools.whisper.clone(), own_tools.clone())),
         llm: Arc::new(LlamaCli::new(settings.tools.llama.clone(), own_tools)),
+        remote: Arc::new(lan.client()),
         sink: Arc::new(PasteSink),
         probe: Arc::new(MemoryProbe::default()),
         models: Arc::new(ModelDirectory::new(move || models_store.models_dir())),

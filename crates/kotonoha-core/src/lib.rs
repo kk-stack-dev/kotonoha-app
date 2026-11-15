@@ -5,6 +5,7 @@
 
 pub mod audio;
 pub mod dictionary;
+pub mod lan;
 pub mod linebreak;
 pub mod models;
 pub mod pipeline;

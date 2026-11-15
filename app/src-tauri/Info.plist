@@ -3,7 +3,13 @@
 <plist version="1.0">
 <dict>
     <key>NSMicrophoneUsageDescription</key>
-    <string>話した内容を文字にするためにマイクを使います。音声はこの Mac の中だけで処理され、外部には送信されません。</string>
+    <string>話した内容を文字にするためにマイクを使います。音声はこの Mac か、LAN 連携で組にした同じ LAN 内のコンピューターで処理され、インターネットには送信されません。</string>
+    <key>NSLocalNetworkUsageDescription</key>
+    <string>LAN 連携をオンにしたときだけ、同じ LAN 内で組にしたコンピューターを探して、音声認識を任せたり引き受けたりします。インターネットには送信しません。</string>
+    <key>NSBonjourServices</key>
+    <array>
+        <string>_kotonoha._tcp</string>
+    </array>
     <key>LSUIElement</key>
     <true/>
 </dict>

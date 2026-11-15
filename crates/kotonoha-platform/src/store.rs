@@ -81,7 +81,7 @@ impl ConfigSource for ConfigStore {
     }
 }
 
-fn read_json<T: DeserializeOwned>(path: &Path) -> Option<T> {
+pub(crate) fn read_json<T: DeserializeOwned>(path: &Path) -> Option<T> {
     let text = match std::fs::read_to_string(path) {
         Ok(text) => text,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return None,
@@ -96,7 +96,7 @@ fn read_json<T: DeserializeOwned>(path: &Path) -> Option<T> {
 }
 
 /// Writes to a sibling temporary file and renames it over the target, so a crash never leaves half a file.
-fn write_json<T: Serialize>(path: &Path, value: &T) -> Result<(), StoreError> {
+pub(crate) fn write_json<T: Serialize>(path: &Path, value: &T) -> Result<(), StoreError> {
     let err = |source| StoreError::Write { path: path.to_owned(), source };
     let dir = path.parent().unwrap_or(Path::new("."));
     std::fs::create_dir_all(dir).map_err(err)?;

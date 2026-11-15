@@ -260,6 +260,134 @@
   transform: rotate(90deg);
 }
 
+/* ------------------------------------------------------------------ LAN */
+
+.confirm,
+.pairing,
+.request {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+}
+
+.confirm[hidden],
+.pairing[hidden],
+.request[hidden],
+.lan-body[hidden],
+.paired[hidden],
+.finder[hidden],
+.manual[hidden],
+.buttons[hidden] {
+  display: none;
+}
+
+.confirm p {
+  margin: 0;
+}
+
+.lan-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding-bottom: 8px;
+}
+
+.code {
+  font-size: 28px;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  font-variant-numeric: tabular-nums;
+}
+
+.paired {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding-top: 6px;
+}
+
+.paired .text {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+}
+
+.finder,
+.clients {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 6px;
+}
+
+.finder-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.finder .label,
+.clients .label {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.found {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+}
+
+.found:empty {
+  display: none;
+}
+
+.found li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-height: 44px;
+  padding: 6px 10px 6px 14px;
+  border-top: 1px solid var(--border);
+}
+
+.found li:first-child {
+  border-top: none;
+}
+
+.found .name {
+  flex: 1;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.finder .disclosure {
+  padding: 6px 0;
+}
+
+.manual {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 10px;
+  align-items: center;
+}
+
+.manual input {
+  flex: 1;
+  min-width: 180px;
+}
+
+.manual .hint {
+  flex-basis: 100%;
+}
+
 /* ------------------------------------------------------------------ advanced */
 
 .model-fields {

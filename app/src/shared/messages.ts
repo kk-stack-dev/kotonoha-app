@@ -93,5 +93,10 @@ function failureText(failure: Failure, platform: Platform): { title: string; det
       return { title: "音声を認識できませんでした" };
     case "transcription":
       return { title: "文字起こし処理に失敗しました", detail: "設定画面でツールの動作状況をご確認ください" };
+    case "serverUnreachable":
+      return {
+        title: "組にしたコンピューターに接続できませんでした",
+        detail: "相手の電源が入っていて、処理の受け付けがオンになっているかを確かめてください",
+      };
   }
 }

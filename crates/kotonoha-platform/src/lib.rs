@@ -2,6 +2,7 @@
 
 pub mod audio;
 pub mod download;
+pub mod lan;
 pub mod library;
 pub mod llama;
 pub mod output;

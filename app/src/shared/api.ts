@@ -7,6 +7,10 @@ import type {
   Dictionary,
   DownloadProgress,
   DownloadSet,
+  FoundComputer,
+  LanStatus,
+  PairedServer,
+  PairPrompt,
   Phase,
   Settings,
   SetupStatus,
@@ -48,6 +52,16 @@ export const api = {
   pendingUpdate: () => invoke<string | null>("pending_update"),
   openReleasePage: () => invoke<void>("open_release_page"),
   setAutostart: (enabled: boolean) => invoke<void>("set_autostart", { enabled }),
+  lanStatus: () => invoke<LanStatus>("lan_status"),
+  lanSetServing: (enabled: boolean) => invoke<LanStatus>("lan_set_serving", { enabled }),
+  lanBrowse: () => invoke<FoundComputer[]>("lan_browse"),
+  lanPair: (addresses: string[]) => invoke<PairedServer>("lan_pair", { addresses }),
+  lanPairCancel: () => invoke<void>("lan_pair_cancel"),
+  lanPairAnswer: (accept: boolean) => invoke<void>("lan_pair_answer", { accept }),
+  lanForgetServer: () => invoke<void>("lan_forget_server"),
+  lanForgetClient: (key: string) => invoke<void>("lan_forget_client", { key }),
+  lanCheck: () => invoke<string>("lan_check"),
+  openLocalNetworkSettings: () => invoke<void>("open_local_network_settings"),
 };
 
 export const events = {
@@ -60,6 +74,11 @@ export const events = {
     listen<string>("update-available", (e) => handler(e.payload)),
   onDownload: (handler: (p: DownloadProgress) => void): Promise<UnlistenFn> =>
     listen<DownloadProgress>("download-progress", (e) => handler(e.payload)),
+  onLanChanged: (handler: () => void): Promise<UnlistenFn> => listen("lan-changed", () => handler()),
+  onLanPairRequest: (handler: (request: PairPrompt | null) => void): Promise<UnlistenFn> =>
+    listen<PairPrompt | null>("lan-pair-request", (e) => handler(e.payload)),
+  onLanPairCode: (handler: (code: string) => void): Promise<UnlistenFn> =>
+    listen<string>("lan-pair-code", (e) => handler(e.payload)),
 };
 
 /** Command errors arrive as plain strings. */
