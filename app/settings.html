@@ -15,7 +15,7 @@
       <div class="tabs" role="tablist" aria-label="設定タブ">
         <button type="button" role="tab" id="tab-general" aria-controls="panel-general" aria-selected="true">一般</button>
         <button type="button" role="tab" id="tab-dictionary" aria-controls="panel-dictionary" aria-selected="false" tabindex="-1">辞書</button>
-        <button type="button" role="tab" id="tab-lan" aria-controls="panel-lan" aria-selected="false" tabindex="-1">LAN 連携</button>
+        <button type="button" role="tab" id="tab-lan" aria-controls="panel-lan" aria-selected="false" tabindex="-1">LAN 連携<span class="tag beta">ベータ版</span></button>
         <button type="button" role="tab" id="tab-advanced" aria-controls="panel-advanced" aria-selected="false" tabindex="-1">詳細</button>
       </div>
     </header>
@@ -148,6 +148,10 @@
       <div class="panel" role="tabpanel" id="panel-lan" aria-labelledby="tab-lan" hidden>
         <p class="muted">
           同じ LAN にある別のコンピューターに、音声認識と文章校正を任せられます。音声と文字は、ペアリングしたコンピューターにだけ暗号化して送ります。インターネットには送りません。
+        </p>
+        <p class="muted small">
+          <span class="tag beta">ベータ版</span>
+          試験中の機能です。思いどおりに動かないときは、オフにするとこれまでどおりこのコンピューターだけで処理します。
         </p>
 
         <section class="card list" aria-labelledby="remote-heading">

@@ -262,6 +262,17 @@
 
 /* ------------------------------------------------------------------ LAN */
 
+.tabs .tag.beta {
+  margin-left: 6px;
+  padding: 1px 7px;
+  font-size: 11px;
+  font-weight: 400;
+}
+
+#panel-lan > p .tag.beta {
+  margin-right: 6px;
+}
+
 .confirm,
 .pairing,
 .request {
