@@ -25,8 +25,7 @@ fn tag_of(body: &str) -> Option<String> {
 
 /// Compares `current` with the latest published release. Blocking.
 pub fn check(current: &str) -> Result<UpdateStatus, UpdateError> {
-    let agent: ureq::Agent =
-        ureq::Agent::config_builder().timeout_global(Some(Duration::from_secs(15))).build().into();
+    let agent: ureq::Agent = ureq::Agent::config_builder().timeout_global(Some(Duration::from_secs(15))).build().into();
     let mut response = agent
         .get(LATEST_API)
         .header("Accept", "application/vnd.github+json")

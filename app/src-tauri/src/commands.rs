@@ -144,7 +144,9 @@ pub fn edit_word(store: Store<'_>, word: String, new_word: String, variants: Str
 /// Turns a word on or off without removing it. Shipped words can only be turned off this way.
 #[tauri::command]
 pub fn set_word_enabled(store: Store<'_>, word: String, enabled: bool) -> Result<Dictionary, String> {
-    store.update_dictionary(|d| d.set_enabled(&word, enabled)).map_err(|e| format!("辞書を保存できませんでした: {e}"))?;
+    store
+        .update_dictionary(|d| d.set_enabled(&word, enabled))
+        .map_err(|e| format!("辞書を保存できませんでした: {e}"))?;
     Ok(store.dictionary())
 }
 
@@ -385,7 +387,9 @@ pub async fn check_update<R: Runtime>(app: AppHandle<R>) -> Result<UpdateStatus,
         .await
         .map_err(|e| e.to_string())?
         .inspect_err(|e| tracing::warn!(error = %e, "update check failed"))
-        .map_err(|_| "アップデートの確認に失敗しました。インターネット接続を確認して、もう一度お試しください。".to_string())?;
+        .map_err(|_| {
+            "アップデートの確認に失敗しました。インターネット接続を確認して、もう一度お試しください。".to_string()
+        })?;
     if let UpdateStatus::Available { latest } = &status {
         crate::updates::announce(&app, latest);
     }

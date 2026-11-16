@@ -1,8 +1,8 @@
 //! Menu bar (macOS) / notification area (Windows) icon and menu.
 
 use kotonoha_core::session::{Phase, SessionHandle};
-use tauri::image::Image;
 use std::sync::Mutex;
+use tauri::image::Image;
 
 use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
 use tauri::tray::{TrayIcon, TrayIconBuilder};
