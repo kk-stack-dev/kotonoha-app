@@ -40,7 +40,7 @@ impl LanguageModel for LlamaCli {
         // on Windows, and a file has no command-line length limit
         let prompt =
             write_prompt(request.prompt).map_err(|e| EngineError::Failed(format!("could not write prompt: {e}")))?;
-        let args: Vec<std::ffi::OsString> = vec![
+        let mut args: Vec<std::ffi::OsString> = vec![
             "-m".into(),
             request.model.into(),
             "-f".into(),
@@ -60,7 +60,13 @@ impl LanguageModel for LlamaCli {
         ];
         // Roughly: model load plus a token budget proportional to the request
         let timeout = Duration::from_secs(30) + Duration::from_millis(request.max_tokens as u64 * 50);
-        let output = process::run(&program, &args, timeout).await.map_err(to_engine_error)?;
+        let mut output = process::run(&program, &args, timeout).await.map_err(to_engine_error)?;
+        if !output.success {
+            // A GPU driver can fail where the CPU works: try once more with no layers on the GPU
+            tracing::warn!(code = ?output.code, "llama failed; retrying without the GPU");
+            args.extend(["-ngl".into(), "0".into()]);
+            output = process::run(&program, &args, timeout).await.map_err(to_engine_error)?;
+        }
         if !output.success {
             return Err(EngineError::Failed(format!(
                 "llama exited with {:?}: {}",

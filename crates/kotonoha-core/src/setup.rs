@@ -46,7 +46,9 @@ impl Download {
     }
 }
 
-/// What is already on this machine.
+/// What is already on this machine. A tool counts only when it is ready to use as it is: a build that
+/// setup downloaded earlier but that is no longer the one it would download now (a newer release, or
+/// the Vulkan build where the CPU-only one was) counts as missing, so setup offers the replacement.
 #[derive(Debug, Clone, Copy, Default)]
 pub struct Present {
     pub whisper_tool: bool,
@@ -70,8 +72,14 @@ impl Plan {
 }
 
 /// Everything missing for dictation, sized for `mode`. Text clean-up (llama.cpp and its model) is
-/// left out in critical mode, where it is never used.
-pub fn plan(mode: MemoryMode, target: Option<Target>, present: Present, catalog: &'static [CatalogTool]) -> Plan {
+/// left out in critical mode, where it is never used. `vulkan`: the machine can run Vulkan builds.
+pub fn plan(
+    mode: MemoryMode,
+    target: Option<Target>,
+    vulkan: bool,
+    present: Present,
+    catalog: &'static [CatalogTool],
+) -> Plan {
     let mut plan = Plan { downloads: Vec::new(), manual: Vec::new() };
     let wants_llm = mode != MemoryMode::Critical;
     for (tool, have, wanted) in
@@ -80,7 +88,7 @@ pub fn plan(mode: MemoryMode, target: Option<Target>, present: Present, catalog:
         if have || !wanted {
             continue;
         }
-        match tools::downloadable(catalog, tool, target) {
+        match tools::downloadable(catalog, tool, target, vulkan) {
             Some(build) => plan.downloads.push(Download::tool(build)),
             None => plan.manual.push(tool),
         }
@@ -123,6 +131,7 @@ mod tests {
         CatalogTool {
             tool: Tool::Whisper,
             target: Target::MacArm64,
+            variant: tools::Variant::Standard,
             url: "https://example.invalid/whisper-cli",
             sha256: "a",
             bytes: 10,
@@ -130,6 +139,7 @@ mod tests {
         CatalogTool {
             tool: Tool::Llama,
             target: Target::MacArm64,
+            variant: tools::Variant::Standard,
             url: "https://example.invalid/llama-completion",
             sha256: "b",
             bytes: 20,
@@ -142,7 +152,7 @@ mod tests {
 
     #[test]
     fn fresh_machine_gets_tools_and_standard_models() {
-        let plan = plan(MemoryMode::Normal, Some(Target::MacArm64), Present::default(), BUILDS);
+        let plan = plan(MemoryMode::Normal, Some(Target::MacArm64), false, Present::default(), BUILDS);
         assert_eq!(
             files(&plan),
             ["whisper-cli", "llama-completion", "ggml-large-v3-turbo-q5_0.bin", "qwen2.5-1.5b-instruct-q4_k_m.gguf"]
@@ -155,27 +165,27 @@ mod tests {
 
     #[test]
     fn low_memory_gets_light_models_and_critical_skips_clean_up() {
-        let low = plan(MemoryMode::Low, Some(Target::MacArm64), Present::default(), BUILDS);
+        let low = plan(MemoryMode::Low, Some(Target::MacArm64), false, Present::default(), BUILDS);
         assert_eq!(&files(&low)[2..], ["ggml-small.bin", "Qwen3.5-0.8B-Q4_K_M.gguf"]);
-        let critical = plan(MemoryMode::Critical, Some(Target::MacArm64), Present::default(), BUILDS);
+        let critical = plan(MemoryMode::Critical, Some(Target::MacArm64), false, Present::default(), BUILDS);
         assert_eq!(files(&critical), ["whisper-cli", "ggml-small.bin"]);
     }
 
     #[test]
     fn only_missing_pieces_are_planned() {
         let present = Present { whisper_tool: true, llama_tool: true, whisper_model: true, llm_model: false };
-        let plan = plan(MemoryMode::Normal, Some(Target::MacArm64), present, BUILDS);
+        let plan = plan(MemoryMode::Normal, Some(Target::MacArm64), false, present, BUILDS);
         assert_eq!(files(&plan), ["qwen2.5-1.5b-instruct-q4_k_m.gguf"]);
         let all = Present { llm_model: true, ..present };
-        assert!(super::plan(MemoryMode::Normal, Some(Target::MacArm64), all, BUILDS).downloads.is_empty());
+        assert!(super::plan(MemoryMode::Normal, Some(Target::MacArm64), false, all, BUILDS).downloads.is_empty());
     }
 
     #[test]
     fn tools_without_a_build_are_left_to_the_user() {
-        let plan = plan(MemoryMode::Normal, Some(Target::WindowsX64), Present::default(), BUILDS);
+        let plan = plan(MemoryMode::Normal, Some(Target::WindowsX64), false, Present::default(), BUILDS);
         assert_eq!(plan.manual, [Tool::Whisper, Tool::Llama]);
         assert_eq!(files(&plan), ["ggml-large-v3-turbo-q5_0.bin", "qwen2.5-1.5b-instruct-q4_k_m.gguf"]);
-        assert_eq!(super::plan(MemoryMode::Normal, None, Present::default(), BUILDS).manual.len(), 2);
+        assert_eq!(super::plan(MemoryMode::Normal, None, false, Present::default(), BUILDS).manual.len(), 2);
     }
 
     #[test]

@@ -60,12 +60,24 @@ impl Target {
     }
 }
 
+/// How a build computes. Apple Silicon builds use the GPU (Metal) as their standard build; Windows has
+/// a separate Vulkan build, which works with NVIDIA, AMD and Intel GPUs alike but needs the Vulkan
+/// runtime that GPU drivers install (`vulkan-1.dll`), so the CPU-only build stays for machines without it.
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub enum Variant {
+    #[default]
+    Standard,
+    Vulkan,
+}
+
 /// A tool build the app can download, with its expected checksum.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CatalogTool {
     pub tool: Tool,
     pub target: Target,
+    pub variant: Variant,
     pub url: &'static str,
     pub sha256: &'static str,
     pub bytes: u64,
@@ -84,6 +96,7 @@ pub const TOOL_CATALOG: &[CatalogTool] = &[
     CatalogTool {
         tool: Tool::Whisper,
         target: Target::MacArm64,
+        variant: Variant::Standard,
         url: "https://github.com/kk-stack-dev/kotonoha-app/releases/download/tools-v1/whisper-cli-mac-arm64",
         sha256: "4e178127dd8f22be907e0d6315c6bbfc98e482cb88a8dee042a350890197b305",
         bytes: 8005736,
@@ -91,6 +104,7 @@ pub const TOOL_CATALOG: &[CatalogTool] = &[
     CatalogTool {
         tool: Tool::Whisper,
         target: Target::MacX64,
+        variant: Variant::Standard,
         url: "https://github.com/kk-stack-dev/kotonoha-app/releases/download/tools-v1/whisper-cli-mac-x64",
         sha256: "a72825ae40aae17c02a0ede2279637bf9e6ebad0fce203dd7e60bd6be59b33cb",
         bytes: 3229480,
@@ -98,6 +112,7 @@ pub const TOOL_CATALOG: &[CatalogTool] = &[
     CatalogTool {
         tool: Tool::Whisper,
         target: Target::WindowsX64,
+        variant: Variant::Standard,
         url: "https://github.com/kk-stack-dev/kotonoha-app/releases/download/tools-v1/whisper-cli-windows-x64.exe",
         sha256: "a16e6b02a777a640aa21786858a4efea480a88ce2bd582030efa3a2744d398ec",
         bytes: 2711552,
@@ -105,6 +120,7 @@ pub const TOOL_CATALOG: &[CatalogTool] = &[
     CatalogTool {
         tool: Tool::Llama,
         target: Target::MacArm64,
+        variant: Variant::Standard,
         url: "https://github.com/kk-stack-dev/kotonoha-app/releases/download/tools-v1/llama-completion-mac-arm64",
         sha256: "43247fb4fdf8fd24667234a63d6df54d5788774540bd1f57a2d6dc7481435486",
         bytes: 15478496,
@@ -112,6 +128,7 @@ pub const TOOL_CATALOG: &[CatalogTool] = &[
     CatalogTool {
         tool: Tool::Llama,
         target: Target::MacX64,
+        variant: Variant::Standard,
         url: "https://github.com/kk-stack-dev/kotonoha-app/releases/download/tools-v1/llama-completion-mac-x64",
         sha256: "4f818f0819ce49d851f8786052edfba8620b7a202d8057d5ad717f1d0d0c1b70",
         bytes: 11160944,
@@ -119,19 +136,24 @@ pub const TOOL_CATALOG: &[CatalogTool] = &[
     CatalogTool {
         tool: Tool::Llama,
         target: Target::WindowsX64,
+        variant: Variant::Standard,
         url: "https://github.com/kk-stack-dev/kotonoha-app/releases/download/tools-v1/llama-completion-windows-x64.exe",
         sha256: "3f03aad894fa242bbc25e78bc1ee8907e47f315de8819987850c97a276cca279",
         bytes: 7312896,
     },
 ];
 
+/// The build of `tool` to download for this machine: the Vulkan build where there is one and the
+/// machine can run it (`vulkan`), otherwise the standard build.
 pub fn downloadable(
     catalog: &'static [CatalogTool],
     tool: Tool,
     target: Option<Target>,
+    vulkan: bool,
 ) -> Option<&'static CatalogTool> {
     let target = target?;
-    catalog.iter().find(|t| t.tool == tool && t.target == target)
+    let find = |variant| catalog.iter().find(|t| t.tool == tool && t.target == target && t.variant == variant);
+    vulkan.then(|| find(Variant::Vulkan)).flatten().or_else(|| find(Variant::Standard))
 }
 
 #[cfg(test)]
@@ -141,6 +163,7 @@ mod tests {
     const FAKE: &[CatalogTool] = &[CatalogTool {
         tool: Tool::Whisper,
         target: Target::WindowsX64,
+        variant: Variant::Standard,
         url: "https://example.invalid/whisper-cli.exe",
         sha256: "00",
         bytes: 1,
@@ -148,12 +171,45 @@ mod tests {
 
     #[test]
     fn looks_up_by_tool_and_target() {
-        assert!(downloadable(FAKE, Tool::Whisper, Some(Target::WindowsX64)).is_some());
-        assert!(downloadable(FAKE, Tool::Llama, Some(Target::WindowsX64)).is_none());
-        assert!(downloadable(FAKE, Tool::Whisper, Some(Target::MacArm64)).is_none());
-        assert!(downloadable(FAKE, Tool::Whisper, None).is_none());
+        assert!(downloadable(FAKE, Tool::Whisper, Some(Target::WindowsX64), false).is_some());
+        assert!(downloadable(FAKE, Tool::Llama, Some(Target::WindowsX64), false).is_none());
+        assert!(downloadable(FAKE, Tool::Whisper, Some(Target::MacArm64), false).is_none());
+        assert!(downloadable(FAKE, Tool::Whisper, None, false).is_none());
         assert_eq!(FAKE[0].file(), "whisper-cli.exe");
         assert_eq!(Target::MacArm64.executable(Tool::Llama), "llama-completion");
+    }
+
+    const BOTH: &[CatalogTool] = &[
+        CatalogTool {
+            tool: Tool::Whisper,
+            target: Target::WindowsX64,
+            variant: Variant::Standard,
+            url: "https://example.invalid/whisper-cli-cpu.exe",
+            sha256: "00",
+            bytes: 1,
+        },
+        CatalogTool {
+            tool: Tool::Whisper,
+            target: Target::WindowsX64,
+            variant: Variant::Vulkan,
+            url: "https://example.invalid/whisper-cli-vulkan.exe",
+            sha256: "11",
+            bytes: 2,
+        },
+    ];
+
+    #[test]
+    fn vulkan_build_only_where_vulkan_runs() {
+        let pick = |vulkan| downloadable(BOTH, Tool::Whisper, Some(Target::WindowsX64), vulkan).unwrap().variant;
+        assert_eq!(pick(true), Variant::Vulkan);
+        assert_eq!(pick(false), Variant::Standard);
+        // No Vulkan build published: the standard one
+        assert_eq!(
+            downloadable(FAKE, Tool::Whisper, Some(Target::WindowsX64), true).unwrap().variant,
+            Variant::Standard
+        );
+        // Both are saved under the same name, so switching builds replaces the file
+        assert_eq!(BOTH[0].file(), BOTH[1].file());
     }
 
     #[test]

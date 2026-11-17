@@ -11,7 +11,7 @@ use kotonoha_core::session::{Phase, SessionHandle};
 use kotonoha_core::settings::Settings;
 use kotonoha_core::setup::{self, Download, Plan, Present, Progress};
 use kotonoha_core::shortcut::{paste_label, Platform, Shortcut, ShortcutError};
-use kotonoha_core::tools::{Target, TOOL_CATALOG};
+use kotonoha_core::tools::{self as tools_catalog, Target, TOOL_CATALOG};
 use kotonoha_core::update::{UpdateStatus, RELEASES_PAGE};
 use kotonoha_platform::audio::{self, MicPermission};
 use kotonoha_platform::store::ConfigStore;
@@ -191,14 +191,23 @@ fn locate_tools(store: &ConfigStore) -> (Option<PathBuf>, Option<PathBuf>) {
 
 fn current_plan(store: &ConfigStore, mode: MemoryMode, library: &[ModelFile]) -> Plan {
     let (whisper_tool, llama_tool) = locate_tools(store);
+    let own = store.dirs().tools_dir();
+    let vulkan = tools::vulkan_available();
+    // A build setup downloaded earlier that is not the one it would download now (say, the CPU-only
+    // build on a machine that can run the Vulkan one) is planned again, which replaces it
+    let ready = |tool, found: Option<PathBuf>| {
+        found.is_some_and(|path| {
+            tools::is_current(&path, &own, tools_catalog::downloadable(TOOL_CATALOG, tool, Target::current(), vulkan))
+        })
+    };
     let has = |kind| library.iter().any(|m| m.kind == kind);
     let present = Present {
-        whisper_tool: whisper_tool.is_some(),
-        llama_tool: llama_tool.is_some(),
+        whisper_tool: ready(Tool::Whisper, whisper_tool),
+        llama_tool: ready(Tool::Llama, llama_tool),
         whisper_model: has(ModelKind::Whisper),
         llm_model: has(ModelKind::Llm),
     };
-    setup::plan(mode, Target::current(), present, TOOL_CATALOG)
+    setup::plan(mode, Target::current(), vulkan, present, TOOL_CATALOG)
 }
 
 #[tauri::command]

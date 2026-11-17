@@ -213,7 +213,7 @@ mod tests {
 
         let root = tempfile::tempdir().unwrap();
         let folders = Folders { tools: root.path(), models: root.path() };
-        let planned = plan(MemoryMode::Normal, Some(Target::WindowsX64), Present::default(), TOOL_CATALOG);
+        let planned = plan(MemoryMode::Normal, Some(Target::WindowsX64), false, Present::default(), TOOL_CATALOG);
         let whisper = planned.downloads.iter().find(|d| d.destination == Destination::Tools).unwrap();
         let path = fetch(whisper, &folders, &AtomicBool::new(false), |_, _| {}).unwrap();
         assert_eq!(path, root.path().join("whisper-cli.exe"));

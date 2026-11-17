@@ -26,6 +26,7 @@ on:
 env:
   WHISPER_REF: v1.9.5
   LLAMA_REF: v0.7.0
+  VULKAN_VERSION: 1.4.321.1
   # One self-contained executable per tool: static libraries, no OpenMP runtime, no network code
   COMMON_FLAGS: >-
     -DCMAKE_BUILD_TYPE=Release
@@ -69,6 +70,15 @@ jobs:
             flags: >-
               -DCMAKE_POLICY_DEFAULT_CMP0091=NEW -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
               -DGGML_AVX=ON -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON -DGGML_BMI2=ON
+          # GPU build for NVIDIA, AMD and Intel GPUs alike. Links vulkan-1.dll, which GPU drivers install;
+          # the app downloads it only where that file exists and keeps the build above for other machines
+          - target: windows-x64-vulkan
+            os: windows-latest
+            exe: .exe
+            flags: >-
+              -DCMAKE_POLICY_DEFAULT_CMP0091=NEW -DCMAKE_MSVC_RUNTIME_LIBRARY=MultiThreaded
+              -DGGML_AVX=ON -DGGML_AVX2=ON -DGGML_FMA=ON -DGGML_F16C=ON -DGGML_BMI2=ON
+              -DGGML_VULKAN=ON
     runs-on: ${{ matrix.os }}
     defaults:
       run:
@@ -78,6 +88,17 @@ jobs:
         run: |
           git clone --depth 1 --branch "$WHISPER_REF" https://github.com/ggml-org/whisper.cpp whisper
           git clone --depth 1 --branch "$LLAMA_REF" https://github.com/ggml-org/llama.cpp llama
+
+      # The SDK brings the headers, vulkan-1.lib and the shader compiler; it also installs the runtime,
+      # so the smoke test below can start the executables on a runner without a GPU
+      - name: Install the Vulkan SDK
+        if: endsWith(matrix.target, '-vulkan')
+        shell: pwsh
+        run: |
+          curl.exe -fsSL -o "$env:RUNNER_TEMP\vulkan-sdk.exe" "https://sdk.lunarg.com/sdk/download/$env:VULKAN_VERSION/windows/vulkansdk-windows-X64-$env:VULKAN_VERSION.exe"
+          & "$env:RUNNER_TEMP\vulkan-sdk.exe" --accept-licenses --default-answer --confirm-command install
+          Add-Content $env:GITHUB_ENV "VULKAN_SDK=C:\VulkanSDK\$env:VULKAN_VERSION"
+          Add-Content $env:GITHUB_PATH "C:\VulkanSDK\$env:VULKAN_VERSION\bin"
 
       - name: Build whisper-cli
         run: |
@@ -152,9 +173,11 @@ jobs:
             for f in whisper-cli-* llama-completion-*; do
               case "$f" in whisper-cli-*) tool=Whisper ;; *) tool=Llama ;; esac
               case "$f" in *mac-arm64*) target=MacArm64 ;; *mac-x64*) target=MacX64 ;; *) target=WindowsX64 ;; esac
+              case "$f" in *-vulkan*) variant=Vulkan ;; *) variant=Standard ;; esac
               echo "CatalogTool {"
               echo "    tool: Tool::$tool,"
               echo "    target: Target::$target,"
+              echo "    variant: Variant::$variant,"
               echo "    url: \"$base/$f\","
               echo "    sha256: \"$(sha256sum "$f" | cut -d' ' -f1)\","
               echo "    bytes: $(stat -c%s "$f"),"

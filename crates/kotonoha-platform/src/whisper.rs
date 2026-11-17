@@ -55,7 +55,14 @@ impl SpeechRecognizer for WhisperCli {
         if !request.prompt.trim().is_empty() {
             args.extend(["--prompt".into(), request.prompt.into()]);
         }
-        let output = process::run(&program, &args, TIMEOUT).await.map_err(to_engine_error)?;
+        let mut output = process::run(&program, &args, TIMEOUT).await.map_err(to_engine_error)?;
+        if !output.success {
+            // A GPU driver can fail where the CPU works: try once more without the GPU. Harmless for
+            // CPU-only builds, which accept the flag
+            tracing::warn!(code = ?output.code, "whisper failed; retrying without the GPU");
+            args.push("--no-gpu".into());
+            output = process::run(&program, &args, TIMEOUT).await.map_err(to_engine_error)?;
+        }
         if !output.success {
             return Err(EngineError::Failed(format!(
                 "whisper exited with {:?}: {}",

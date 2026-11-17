@@ -113,6 +113,16 @@ function renderBanners(): void {
   if (!status.ready && !sendsWork()) {
     list.push(banner("初期セットアップが未完了です", "音声認識に必要なモデルファイルが見つかりません。", "セットアップを開く", api.openSetup));
   }
+  if (status.ready && status.plan.downloads.some((d) => d.destination === "tools")) {
+    list.push(
+      banner(
+        "処理用ツールの新しい版があります",
+        "お使いの環境により適した版（GPU を使う版など）に入れ替えられます。セットアップ画面からダウンロードしてください。",
+        "セットアップを開く",
+        api.openSetup,
+      ),
+    );
+  }
   if (status.microphonePermission === "denied") {
     list.push(banner("マイクへのアクセスが許可されていません", "音声を録音するにはマイクのアクセス許可が必要です。", "システム設定を開く", api.openMicrophoneSettings));
   }
