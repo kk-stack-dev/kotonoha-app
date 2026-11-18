@@ -91,7 +91,8 @@ impl CatalogTool {
 
 /// Filled from the `catalog.rs` attached to a release of https://github.com/kk-stack-dev/kotonoha-app.
 /// Until a target has an entry, setup on that machine falls back to telling the user how to install the tool.
-/// tools-v1: whisper.cpp v1.9.5, llama.cpp v0.7.0.
+/// tools-v1: whisper.cpp v1.9.5, llama.cpp v0.7.0. tools-v2 rebuilt the same sources and added the
+/// Windows Vulkan builds; only those are taken from it, so nobody re-downloads an equivalent build.
 pub const TOOL_CATALOG: &[CatalogTool] = &[
     CatalogTool {
         tool: Tool::Whisper,
@@ -140,6 +141,22 @@ pub const TOOL_CATALOG: &[CatalogTool] = &[
         url: "https://github.com/kk-stack-dev/kotonoha-app/releases/download/tools-v1/llama-completion-windows-x64.exe",
         sha256: "3f03aad894fa242bbc25e78bc1ee8907e47f315de8819987850c97a276cca279",
         bytes: 7312896,
+    },
+    CatalogTool {
+        tool: Tool::Whisper,
+        target: Target::WindowsX64,
+        variant: Variant::Vulkan,
+        url: "https://github.com/kk-stack-dev/kotonoha-app/releases/download/tools-v2/whisper-cli-windows-x64-vulkan.exe",
+        sha256: "d5305233c970d4500064c512e6943dba39d2a4165e28fdaad747129dfd237dd0",
+        bytes: 46296064,
+    },
+    CatalogTool {
+        tool: Tool::Llama,
+        target: Target::WindowsX64,
+        variant: Variant::Vulkan,
+        url: "https://github.com/kk-stack-dev/kotonoha-app/releases/download/tools-v2/llama-completion-windows-x64-vulkan.exe",
+        sha256: "872ef2866c5e8231cfb0fd110b3a7644320a7d4e466a0c7b6ac99d5c782965fe",
+        bytes: 47209984,
     },
 ];
 
